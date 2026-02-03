@@ -47,7 +47,7 @@ const submit = () => {
     </v-card-text>
     <v-card-actions class="justify-center pb-6">
       <span class="text-body-2">¿Ya tienes cuenta?</span>
-      <v-btn variant="text" color="primary" href="/login" size="small">Iniciar Sesión</v-btn>
+      <v-btn variant="text" color="primary" href="/auth/login" size="small">Iniciar Sesión</v-btn>
     </v-card-actions>
   </v-card>
 </template>
