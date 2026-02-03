@@ -27,4 +27,5 @@ COPY --from=frontend /app/public/build public/build
 COPY resources/views resources/views
 RUN mkdir -p storage/logs storage/app storage/framework/sessions storage/framework/cache
 EXPOSE 3000
-CMD ["./grandesdelfutbol"]
+# Run migrations and start server
+CMD ["sh", "-c", "./grandesdelfutbol artisan migrate && ./grandesdelfutbol"]
