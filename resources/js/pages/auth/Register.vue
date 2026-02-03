@@ -6,7 +6,7 @@ const form = useForm({ name: "", email: "", password: "", password_confirmation:
 const showPassword = ref(false);
 
 const submit = () => {
-  form.post("/register");
+  form.post("/auth/register");
 };
 </script>
 

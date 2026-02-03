@@ -6,7 +6,7 @@ const form = useForm({ email: "", password: "" });
 const showPassword = ref(false);
 
 const submit = () => {
-  form.post("/login");
+  form.post("/auth/login");
 };
 </script>
 
