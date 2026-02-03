@@ -49,6 +49,7 @@ const navItems = [
   { title: "Torneos", icon: "mdi-trophy", to: "/tournaments" },
   { title: "Equipos", icon: "mdi-shield-half-full", to: "/teams" },
   { title: "Jugadores", icon: "mdi-account-group", to: "/players" },
+  { title: "Sedes", icon: "mdi-map-marker", to: "/venues" },
   { title: "Partidos", icon: "mdi-soccer", to: "/matches" },
   { title: "Clasificación", icon: "mdi-format-list-numbered", to: "/standings" },
 ];

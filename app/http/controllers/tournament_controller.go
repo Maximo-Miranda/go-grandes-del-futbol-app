@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+
 	"github.com/goravel/framework/contracts/http"
 	"github.com/goravel/framework/facades"
 
@@ -41,6 +43,14 @@ func (c *TournamentController) Store(ctx http.Context) http.Response {
 		Format:      ctx.Request().Input("format", "round_robin"),
 		GameType:    ctx.Request().Input("game_type", "5v5"),
 		Status:      "draft",
+	}
+
+	// Handle venue_id
+	if venueID := ctx.Request().Input("venue_id"); venueID != "" {
+		var id uint
+		if _, err := fmt.Sscanf(venueID, "%d", &id); err == nil && id > 0 {
+			tournament.VenueID = &id
+		}
 	}
 
 	if err := facades.Orm().Query().Create(&tournament); err != nil {
@@ -130,4 +140,60 @@ func (c *TournamentController) UpdateStatus(ctx http.Context) http.Response {
 	facades.Orm().Query().Save(&tournament)
 
 	return ctx.Response().Redirect(http.StatusFound, "/tournaments/"+id)
+}
+
+func (c *TournamentController) AddTeam(ctx http.Context) http.Response {
+	tournamentID := ctx.Request().Route("id")
+	teamID := ctx.Request().Input("team_id")
+
+	var tournament models.Tournament
+	if err := facades.Orm().Query().Find(&tournament, tournamentID); err != nil {
+		return ctx.Response().Json(http.StatusNotFound, http.Json{"error": "Torneo no encontrado"})
+	}
+
+	var teamIDUint uint
+	fmt.Sscanf(teamID, "%d", &teamIDUint)
+
+	tournamentTeam := models.TournamentTeam{
+		TournamentID: tournament.ID,
+		TeamID:       teamIDUint,
+	}
+
+	if err := facades.Orm().Query().Create(&tournamentTeam); err != nil {
+		return ctx.Response().Json(http.StatusBadRequest, http.Json{"error": "Error al agregar equipo"})
+	}
+
+	return ctx.Response().Redirect(http.StatusFound, "/tournaments/"+tournamentID)
+}
+
+func (c *TournamentController) RemoveTeam(ctx http.Context) http.Response {
+	tournamentID := ctx.Request().Route("id")
+	teamID := ctx.Request().Route("teamId")
+
+	facades.Orm().Query().Where("tournament_id = ? AND team_id = ?", tournamentID, teamID).Delete(&models.TournamentTeam{})
+
+	return ctx.Response().Redirect(http.StatusFound, "/tournaments/"+tournamentID)
+}
+
+func (c *TournamentController) AvailableTeams(ctx http.Context) http.Response {
+	tournamentID := ctx.Request().Route("id")
+
+	// Get team IDs already in this tournament
+	var tournamentTeams []models.TournamentTeam
+	facades.Orm().Query().Where("tournament_id = ?", tournamentID).Find(&tournamentTeams)
+
+	var existingTeamIDs []any
+	for _, tt := range tournamentTeams {
+		existingTeamIDs = append(existingTeamIDs, tt.TeamID)
+	}
+
+	// Get teams not in the list
+	var teams []models.Team
+	if len(existingTeamIDs) > 0 {
+		facades.Orm().Query().WhereNotIn("id", existingTeamIDs).Find(&teams)
+	} else {
+		facades.Orm().Query().Find(&teams)
+	}
+
+	return ctx.Response().Json(http.StatusOK, http.Json{"teams": teams})
 }

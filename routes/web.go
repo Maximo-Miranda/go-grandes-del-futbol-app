@@ -44,6 +44,15 @@ func Web() {
 			dashboardController := controllers.NewDashboardController()
 			router.Get("/dashboard", dashboardController.Index)
 
+			// Venues
+			venueController := controllers.NewVenueController()
+			router.Get("/venues", venueController.Index)
+			router.Get("/venues/create", venueController.Create)
+			router.Post("/venues", venueController.Store)
+			router.Get("/venues/{id}/edit", venueController.Edit)
+			router.Put("/venues/{id}", venueController.Update)
+			router.Delete("/venues/{id}", venueController.Destroy)
+
 			// Tournaments
 			tournamentController := controllers.NewTournamentController()
 			router.Get("/tournaments", tournamentController.Index)
@@ -54,6 +63,9 @@ func Web() {
 			router.Put("/tournaments/{id}", tournamentController.Update)
 			router.Delete("/tournaments/{id}", tournamentController.Destroy)
 			router.Post("/tournaments/{id}/status", tournamentController.UpdateStatus)
+			router.Post("/tournaments/{id}/teams", tournamentController.AddTeam)
+			router.Delete("/tournaments/{id}/teams/{teamId}", tournamentController.RemoveTeam)
+			router.Get("/tournaments/{id}/available-teams", tournamentController.AvailableTeams)
 
 			// Teams
 			teamController := controllers.NewTeamController()
@@ -64,6 +76,9 @@ func Web() {
 			router.Get("/teams/{id}/edit", teamController.Edit)
 			router.Put("/teams/{id}", teamController.Update)
 			router.Delete("/teams/{id}", teamController.Destroy)
+			router.Post("/teams/{id}/players", teamController.AddPlayer)
+			router.Delete("/teams/{id}/players/{playerId}", teamController.RemovePlayer)
+			router.Get("/teams/{id}/available-players", teamController.AvailablePlayers)
 
 			// Players
 			playerController := controllers.NewPlayerController()

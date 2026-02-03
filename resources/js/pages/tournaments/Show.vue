@@ -1,11 +1,47 @@
 <script setup lang="ts">
-import { Head, usePage } from "@inertiajs/vue3";
+import { ref } from "vue";
+import { Head, usePage, router } from "@inertiajs/vue3";
 
-const page = usePage<{ tournament: any; teams: any[]; matches: any[]; standings: any[] }>();
+const page = usePage<{ tournament: any; teams: any[]; matches: any[]; standings: any[]; availableTeams: any[] }>();
 const tournament = page.props.tournament;
 const teams = page.props.teams || [];
 const matches = page.props.matches || [];
 const standings = page.props.standings || [];
+const availableTeams = ref(page.props.availableTeams || []);
+
+const showAddTeamDialog = ref(false);
+const selectedTeamId = ref<number | null>(null);
+const loadingTeams = ref(false);
+
+const openAddTeamDialog = async () => {
+  loadingTeams.value = true;
+  try {
+    const response = await fetch(`/tournaments/${tournament.id}/available-teams`);
+    const data = await response.json();
+    availableTeams.value = data.teams || [];
+  } catch (e) {
+    console.error(e);
+  }
+  loadingTeams.value = false;
+  showAddTeamDialog.value = true;
+};
+
+const addTeam = () => {
+  if (selectedTeamId.value) {
+    router.post(`/tournaments/${tournament.id}/teams`, { team_id: selectedTeamId.value }, {
+      onSuccess: () => {
+        showAddTeamDialog.value = false;
+        selectedTeamId.value = null;
+      }
+    });
+  }
+};
+
+const removeTeam = (teamId: number) => {
+  if (confirm("¿Quitar este equipo del torneo?")) {
+    router.delete(`/tournaments/${tournament.id}/teams/${teamId}`);
+  }
+};
 </script>
 
 <template>
@@ -25,6 +61,7 @@ const standings = page.props.standings || [];
             <v-chip class="mr-2 mb-2">{{ tournament.format }}</v-chip>
             <v-chip class="mr-2 mb-2">{{ tournament.game_type }}</v-chip>
             <v-chip class="mr-2 mb-2" :color="tournament.status === 'active' ? 'success' : 'grey'">{{ tournament.status }}</v-chip>
+            <v-chip v-if="tournament.venue" class="mr-2 mb-2" color="info" prepend-icon="mdi-map-marker">{{ tournament.venue.name }}</v-chip>
           </v-card-text>
         </v-card>
 
@@ -41,10 +78,26 @@ const standings = page.props.standings || [];
 
       <v-col cols="12" md="4">
         <v-card class="mb-4">
-          <v-card-title>Equipos ({{ teams.length }})</v-card-title>
+          <v-card-title class="d-flex justify-space-between align-center">
+            <span>Equipos ({{ teams.length }})</span>
+            <v-btn size="small" color="primary" variant="tonal" prepend-icon="mdi-plus" @click="openAddTeamDialog">
+              Agregar
+            </v-btn>
+          </v-card-title>
           <v-list density="compact">
-            <v-list-item v-for="team in teams" :key="team.id" :href="`/teams/${team.id}`">
-              <v-list-item-title>{{ team.name }}</v-list-item-title>
+            <v-list-item v-for="t in teams" :key="t.team?.id || t.id">
+              <template #prepend>
+                <v-avatar size="32" color="primary">
+                  <v-icon>mdi-shield</v-icon>
+                </v-avatar>
+              </template>
+              <v-list-item-title>{{ t.team?.name || t.name }}</v-list-item-title>
+              <template #append>
+                <v-btn icon="mdi-close" size="x-small" variant="text" color="error" @click="removeTeam(t.team?.id || t.team_id)" />
+              </template>
+            </v-list-item>
+            <v-list-item v-if="teams.length === 0">
+              <v-list-item-title class="text-medium-emphasis">Sin equipos aún</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-card>
@@ -65,5 +118,31 @@ const standings = page.props.standings || [];
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Dialog para agregar equipo -->
+    <v-dialog v-model="showAddTeamDialog" max-width="400">
+      <v-card>
+        <v-card-title>Agregar Equipo al Torneo</v-card-title>
+        <v-card-text>
+          <v-select
+            v-model="selectedTeamId"
+            :items="availableTeams"
+            item-title="name"
+            item-value="id"
+            label="Seleccionar Equipo"
+            :loading="loadingTeams"
+            :disabled="availableTeams.length === 0"
+          />
+          <p v-if="availableTeams.length === 0 && !loadingTeams" class="text-medium-emphasis">
+            No hay equipos disponibles. Primero crea equipos.
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showAddTeamDialog = false">Cancelar</v-btn>
+          <v-btn color="primary" :disabled="!selectedTeamId" @click="addTeam">Agregar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
