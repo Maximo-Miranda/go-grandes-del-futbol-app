@@ -25,7 +25,6 @@ WORKDIR /app
 COPY --from=backend /app/grandesdelfutbol .
 COPY --from=frontend /app/public/build public/build
 COPY resources/views resources/views
-COPY storage storage
-COPY .env.example .env
+RUN mkdir -p storage/logs storage/app storage/framework/sessions storage/framework/cache
 EXPOSE 3000
 CMD ["./grandesdelfutbol"]
