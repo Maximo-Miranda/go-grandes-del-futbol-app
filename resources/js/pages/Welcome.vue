@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from "@inertiajs/vue3";
+import { Head, Link } from "@inertiajs/vue3";
 
 defineProps<{
   version?: string;
@@ -70,12 +70,16 @@ defineProps<{
 
         <!-- Botones -->
         <div class="d-flex ga-4 justify-center flex-wrap mb-12">
-          <v-btn size="x-large" color="amber" class="text-black font-weight-bold" href="/auth/login" prepend-icon="mdi-login" rounded="pill" elevation="8">
-            Entrar a la Cancha
-          </v-btn>
-          <v-btn size="x-large" variant="outlined" color="amber" href="/auth/register" prepend-icon="mdi-account-plus" rounded="pill">
-            Unirme a la Liga
-          </v-btn>
+          <Link href="/auth/login" class="text-decoration-none">
+            <v-btn size="x-large" color="amber" class="text-black font-weight-bold" prepend-icon="mdi-login" rounded="pill" elevation="8">
+              Entrar a la Cancha
+            </v-btn>
+          </Link>
+          <Link href="/auth/register" class="text-decoration-none">
+            <v-btn size="x-large" variant="outlined" color="amber" prepend-icon="mdi-account-plus" rounded="pill">
+              Unirme a la Liga
+            </v-btn>
+          </Link>
         </div>
 
         <!-- Top goleadores -->

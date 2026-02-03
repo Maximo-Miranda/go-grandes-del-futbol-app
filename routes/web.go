@@ -93,7 +93,12 @@ func Web() {
 			// Matches
 			matchController := controllers.NewMatchController()
 			router.Get("/matches", matchController.Index)
+			router.Get("/matches/create", matchController.Create)
+			router.Post("/matches", matchController.Store)
 			router.Get("/matches/{id}", matchController.Show)
+			router.Get("/matches/{id}/edit", matchController.Edit)
+			router.Put("/matches/{id}", matchController.Update)
+			router.Delete("/matches/{id}", matchController.Destroy)
 			router.Post("/matches/{id}/result", matchController.RecordResult)
 
 			// Standings

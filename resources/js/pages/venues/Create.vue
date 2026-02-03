@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm } from "@inertiajs/vue3";
+import { Head, useForm, Link } from "@inertiajs/vue3";
 
 const form = useForm({
   name: "",
@@ -16,11 +16,24 @@ const submit = () => form.post("/venues");
     <v-card>
       <v-card-text class="pa-6">
         <v-form @submit.prevent="submit">
-          <v-text-field v-model="form.name" label="Nombre de la Sede" :error-messages="form.errors.name" class="mb-4" />
-          <v-text-field v-model="form.address" label="Dirección" class="mb-4" />
+          <v-text-field
+            v-model="form.name"
+            label="Nombre de la Sede *"
+            :error-messages="form.errors.name"
+            class="mb-4"
+            required
+          />
+          <v-text-field
+            v-model="form.address"
+            label="Dirección"
+            :error-messages="form.errors.address"
+            class="mb-4"
+          />
           <div class="d-flex ga-4">
             <v-btn type="submit" color="primary" :loading="form.processing">Crear Sede</v-btn>
-            <v-btn variant="outlined" href="/venues">Cancelar</v-btn>
+            <Link href="/venues" class="text-decoration-none">
+              <v-btn variant="outlined">Cancelar</v-btn>
+            </Link>
           </div>
         </v-form>
       </v-card-text>

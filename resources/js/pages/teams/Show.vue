@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { Head, usePage, router } from "@inertiajs/vue3";
+import { Head, usePage, router, Link } from "@inertiajs/vue3";
 
 const page = usePage<{ team: any; players: any[] }>();
 const team = page.props.team;
@@ -26,18 +26,27 @@ const openAddPlayerDialog = async () => {
 
 const addPlayer = () => {
   if (selectedPlayerId.value) {
-    router.post(`/teams/${team.id}/players`, { player_id: selectedPlayerId.value }, {
-      onSuccess: () => {
-        showAddPlayerDialog.value = false;
-        selectedPlayerId.value = null;
+    router.post(
+      `/teams/${team.id}/players`,
+      { player_id: selectedPlayerId.value },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          showAddPlayerDialog.value = false;
+          selectedPlayerId.value = null;
+          // Refresh the page data to update the list
+          router.reload({ only: ["players"] });
+        },
       }
-    });
+    );
   }
 };
 
 const removePlayer = (playerId: number) => {
   if (confirm("¿Quitar este jugador del equipo?")) {
-    router.delete(`/teams/${team.id}/players/${playerId}`);
+    router.delete(`/teams/${team.id}/players/${playerId}`, {
+      preserveScroll: true,
+    });
   }
 };
 </script>
@@ -55,7 +64,9 @@ const removePlayer = (playerId: number) => {
           <p v-if="team.contact_phone" class="text-medium-emphasis">📞 {{ team.contact_phone }}</p>
         </div>
       </div>
-      <v-btn color="primary" :href="`/teams/${team.id}/edit`" prepend-icon="mdi-pencil">Editar</v-btn>
+      <Link :href="`/teams/${team.id}/edit`" class="text-decoration-none">
+        <v-btn color="primary" prepend-icon="mdi-pencil">Editar</v-btn>
+      </Link>
     </div>
 
     <v-row>
@@ -80,9 +91,9 @@ const removePlayer = (playerId: number) => {
             <tbody>
               <tr v-for="tp in players" :key="tp.player?.id || tp.id">
                 <td>
-                  <a :href="`/players/${tp.player?.id || tp.player_id}`" class="text-primary font-weight-medium">
+                  <Link :href="`/players/${tp.player?.id || tp.player_id}`" class="text-primary font-weight-medium">
                     {{ tp.player?.name || "—" }}
-                  </a>
+                  </Link>
                 </td>
                 <td>{{ tp.player?.nickname || "—" }}</td>
                 <td>{{ tp.player?.position || "—" }}</td>

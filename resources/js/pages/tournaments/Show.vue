@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { Head, usePage, router } from "@inertiajs/vue3";
+import { Head, usePage, router, Link } from "@inertiajs/vue3";
 
 const page = usePage<{ tournament: any; teams: any[]; matches: any[]; standings: any[]; availableTeams: any[] }>();
 const tournament = page.props.tournament;
@@ -12,6 +12,11 @@ const availableTeams = ref(page.props.availableTeams || []);
 const showAddTeamDialog = ref(false);
 const selectedTeamId = ref<number | null>(null);
 const loadingTeams = ref(false);
+
+const formatDate = (dateStr: string | null) => {
+  if (!dateStr) return "Sin fecha";
+  return new Date(dateStr).toLocaleDateString("es-CO", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+};
 
 const openAddTeamDialog = async () => {
   loadingTeams.value = true;
@@ -28,18 +33,26 @@ const openAddTeamDialog = async () => {
 
 const addTeam = () => {
   if (selectedTeamId.value) {
-    router.post(`/tournaments/${tournament.id}/teams`, { team_id: selectedTeamId.value }, {
-      onSuccess: () => {
-        showAddTeamDialog.value = false;
-        selectedTeamId.value = null;
+    router.post(
+      `/tournaments/${tournament.id}/teams`,
+      { team_id: selectedTeamId.value },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          showAddTeamDialog.value = false;
+          selectedTeamId.value = null;
+          router.reload({ only: ["teams"] });
+        },
       }
-    });
+    );
   }
 };
 
 const removeTeam = (teamId: number) => {
   if (confirm("¿Quitar este equipo del torneo?")) {
-    router.delete(`/tournaments/${tournament.id}/teams/${teamId}`);
+    router.delete(`/tournaments/${tournament.id}/teams/${teamId}`, {
+      preserveScroll: true,
+    });
   }
 };
 </script>
@@ -49,7 +62,14 @@ const removeTeam = (teamId: number) => {
   <div>
     <div class="d-flex justify-space-between align-center mb-6">
       <h1 class="text-h4 font-weight-bold">{{ tournament.name }}</h1>
-      <v-btn color="primary" :href="`/tournaments/${tournament.id}/edit`" prepend-icon="mdi-pencil">Editar</v-btn>
+      <div class="d-flex ga-2">
+        <Link :href="`/matches/create?tournament_id=${tournament.id}`" class="text-decoration-none">
+          <v-btn color="success" variant="tonal" prepend-icon="mdi-soccer">Nuevo Partido</v-btn>
+        </Link>
+        <Link :href="`/tournaments/${tournament.id}/edit`" class="text-decoration-none">
+          <v-btn color="primary" prepend-icon="mdi-pencil">Editar</v-btn>
+        </Link>
+      </div>
     </div>
 
     <v-row>
@@ -57,22 +77,49 @@ const removeTeam = (teamId: number) => {
         <v-card class="mb-4">
           <v-card-title>Información</v-card-title>
           <v-card-text>
-            <p v-if="tournament.description">{{ tournament.description }}</p>
-            <v-chip class="mr-2 mb-2">{{ tournament.format }}</v-chip>
-            <v-chip class="mr-2 mb-2">{{ tournament.game_type }}</v-chip>
-            <v-chip class="mr-2 mb-2" :color="tournament.status === 'active' ? 'success' : 'grey'">{{ tournament.status }}</v-chip>
-            <v-chip v-if="tournament.venue" class="mr-2 mb-2" color="info" prepend-icon="mdi-map-marker">{{ tournament.venue.name }}</v-chip>
+            <p v-if="tournament.description" class="mb-4">{{ tournament.description }}</p>
+            <div class="d-flex flex-wrap ga-2">
+              <v-chip>{{ tournament.format }}</v-chip>
+              <v-chip>{{ tournament.game_type }}</v-chip>
+              <v-chip :color="tournament.status === 'active' ? 'success' : 'grey'">{{ tournament.status }}</v-chip>
+              <v-chip v-if="tournament.venue" color="info" prepend-icon="mdi-map-marker">{{ tournament.venue.name }}</v-chip>
+              <v-chip v-if="tournament.start_date" prepend-icon="mdi-calendar">
+                {{ new Date(tournament.start_date).toLocaleDateString("es-CO") }}
+                <span v-if="tournament.end_date"> — {{ new Date(tournament.end_date).toLocaleDateString("es-CO") }}</span>
+              </v-chip>
+            </div>
           </v-card-text>
         </v-card>
 
         <v-card v-if="matches.length > 0" class="mb-4">
-          <v-card-title>Partidos</v-card-title>
+          <v-card-title class="d-flex justify-space-between align-center">
+            <span>Partidos ({{ matches.length }})</span>
+            <Link :href="`/matches?tournament_id=${tournament.id}`" class="text-decoration-none">
+              <v-btn size="small" variant="text">Ver todos</v-btn>
+            </Link>
+          </v-card-title>
           <v-list>
-            <v-list-item v-for="m in matches" :key="m.id" :href="`/matches/${m.id}`">
-              <v-list-item-title>{{ m.home_team?.name || "TBD" }} vs {{ m.away_team?.name || "TBD" }}</v-list-item-title>
-              <v-list-item-subtitle>{{ m.match_date }} — {{ m.status }}</v-list-item-subtitle>
-            </v-list-item>
+            <Link v-for="m in matches" :key="m.id" :href="`/matches/${m.id}`" class="text-decoration-none">
+              <v-list-item>
+                <v-list-item-title class="d-flex justify-space-between">
+                  <span>{{ m.home_team?.name || "TBD" }} vs {{ m.away_team?.name || "TBD" }}</span>
+                  <v-chip v-if="m.status === 'completed'" size="x-small" color="success">
+                    {{ m.home_score }} - {{ m.away_score }}
+                  </v-chip>
+                </v-list-item-title>
+                <v-list-item-subtitle>{{ formatDate(m.match_date) }} — {{ m.status }}</v-list-item-subtitle>
+              </v-list-item>
+            </Link>
           </v-list>
+        </v-card>
+        <v-card v-else class="mb-4">
+          <v-card-text class="text-center pa-8 text-medium-emphasis">
+            <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-soccer-field</v-icon>
+            <p>No hay partidos programados</p>
+            <Link :href="`/matches/create?tournament_id=${tournament.id}`" class="text-decoration-none">
+              <v-btn color="primary" variant="tonal" size="small" class="mt-2">Crear Partido</v-btn>
+            </Link>
+          </v-card-text>
         </v-card>
       </v-col>
 
@@ -91,7 +138,9 @@ const removeTeam = (teamId: number) => {
                   <v-icon>mdi-shield</v-icon>
                 </v-avatar>
               </template>
-              <v-list-item-title>{{ t.team?.name || t.name }}</v-list-item-title>
+              <Link :href="`/teams/${t.team?.id || t.team_id}`" class="text-decoration-none">
+                <v-list-item-title class="text-primary">{{ t.team?.name || t.name }}</v-list-item-title>
+              </Link>
               <template #append>
                 <v-btn icon="mdi-close" size="x-small" variant="text" color="error" @click="removeTeam(t.team?.id || t.team_id)" />
               </template>
@@ -105,13 +154,16 @@ const removeTeam = (teamId: number) => {
         <v-card v-if="standings.length > 0">
           <v-card-title>Clasificación</v-card-title>
           <v-table density="compact">
-            <thead><tr><th>#</th><th>Equipo</th><th>Pts</th><th>PJ</th></tr></thead>
+            <thead><tr><th>#</th><th>Equipo</th><th>Pts</th><th>PJ</th><th>DG</th></tr></thead>
             <tbody>
               <tr v-for="(s, i) in standings" :key="s.id">
                 <td>{{ i + 1 }}</td>
-                <td>{{ s.team?.name }}</td>
+                <td>
+                  <Link :href="`/teams/${s.team?.id}`" class="text-primary">{{ s.team?.name }}</Link>
+                </td>
                 <td class="font-weight-bold">{{ s.points }}</td>
                 <td>{{ s.played }}</td>
+                <td>{{ s.goal_difference > 0 ? '+' : '' }}{{ s.goal_difference }}</td>
               </tr>
             </tbody>
           </v-table>
@@ -134,7 +186,7 @@ const removeTeam = (teamId: number) => {
             :disabled="availableTeams.length === 0"
           />
           <p v-if="availableTeams.length === 0 && !loadingTeams" class="text-medium-emphasis">
-            No hay equipos disponibles. Primero crea equipos.
+            No hay equipos disponibles. <Link href="/teams/create" class="text-primary">Crea uno primero</Link>.
           </p>
         </v-card-text>
         <v-card-actions>

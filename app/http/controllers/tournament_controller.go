@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/goravel/framework/contracts/http"
 	"github.com/goravel/framework/facades"
@@ -37,11 +38,37 @@ func (c *TournamentController) Create(ctx http.Context) http.Response {
 }
 
 func (c *TournamentController) Store(ctx http.Context) http.Response {
+	var venues []models.Venue
+	facades.Orm().Query().Find(&venues)
+
+	// Validation
+	errors := make(map[string]string)
+	name := ctx.Request().Input("name")
+	format := ctx.Request().Input("format")
+	gameType := ctx.Request().Input("game_type")
+
+	if name == "" {
+		errors["name"] = "El nombre del torneo es obligatorio"
+	}
+	if format == "" {
+		errors["format"] = "El formato es obligatorio"
+	}
+	if gameType == "" {
+		errors["game_type"] = "El tipo de juego es obligatorio"
+	}
+
+	if len(errors) > 0 {
+		return c.inertia.Render(ctx, "tournaments/Create", map[string]any{
+			"venues": venues,
+			"errors": errors,
+		})
+	}
+
 	tournament := models.Tournament{
-		Name:        ctx.Request().Input("name"),
+		Name:        name,
 		Description: ctx.Request().Input("description"),
-		Format:      ctx.Request().Input("format", "round_robin"),
-		GameType:    ctx.Request().Input("game_type", "5v5"),
+		Format:      format,
+		GameType:    gameType,
 		Status:      "draft",
 	}
 
@@ -53,8 +80,23 @@ func (c *TournamentController) Store(ctx http.Context) http.Response {
 		}
 	}
 
+	// Handle start_date
+	if startDate := ctx.Request().Input("start_date"); startDate != "" {
+		if t, err := time.Parse("2006-01-02", startDate); err == nil {
+			tournament.StartDate = &t
+		}
+	}
+
+	// Handle end_date
+	if endDate := ctx.Request().Input("end_date"); endDate != "" {
+		if t, err := time.Parse("2006-01-02", endDate); err == nil {
+			tournament.EndDate = &t
+		}
+	}
+
 	if err := facades.Orm().Query().Create(&tournament); err != nil {
 		return c.inertia.Render(ctx, "tournaments/Create", map[string]any{
+			"venues": venues,
 			"errors": map[string]string{"name": "Error al crear el torneo"},
 		})
 	}
@@ -113,6 +155,34 @@ func (c *TournamentController) Update(ctx http.Context) http.Response {
 	tournament.Description = ctx.Request().Input("description", tournament.Description)
 	tournament.Format = ctx.Request().Input("format", tournament.Format)
 	tournament.GameType = ctx.Request().Input("game_type", tournament.GameType)
+
+	// Handle venue_id
+	if venueID := ctx.Request().Input("venue_id"); venueID != "" {
+		var vID uint
+		if _, err := fmt.Sscanf(venueID, "%d", &vID); err == nil && vID > 0 {
+			tournament.VenueID = &vID
+		}
+	} else {
+		tournament.VenueID = nil
+	}
+
+	// Handle start_date
+	if startDate := ctx.Request().Input("start_date"); startDate != "" {
+		if t, err := time.Parse("2006-01-02", startDate); err == nil {
+			tournament.StartDate = &t
+		}
+	} else {
+		tournament.StartDate = nil
+	}
+
+	// Handle end_date
+	if endDate := ctx.Request().Input("end_date"); endDate != "" {
+		if t, err := time.Parse("2006-01-02", endDate); err == nil {
+			tournament.EndDate = &t
+		}
+	} else {
+		tournament.EndDate = nil
+	}
 
 	facades.Orm().Query().Save(&tournament)
 
