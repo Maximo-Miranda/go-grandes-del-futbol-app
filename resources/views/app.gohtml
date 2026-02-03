@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    {{ if .isDev }}
+    <script type="module" src="http://localhost:5173/@vite/client"></script>
+    <script type="module" src="http://localhost:5173/resources/js/app.ts"></script>
+    {{ else }}
+    {{ range .cssFiles }}
+    <link rel="stylesheet" href="{{ . }}">
+    {{ end }}
+    {{ end }}
+</head>
+<body>
+    <div id="app" data-page="{{ .pageData }}"></div>
+    {{ if not .isDev }}
+    {{ range .jsFiles }}
+    <script type="module" src="{{ . }}"></script>
+    {{ end }}
+    {{ end }}
+</body>
+</html>

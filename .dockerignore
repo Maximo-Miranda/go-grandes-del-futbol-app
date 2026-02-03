@@ -1,0 +1,9 @@
+node_modules
+public/build
+.git
+.idea
+.DS_Store
+*.md
+.env
+.env.*
+!.env.example
