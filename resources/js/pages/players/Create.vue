@@ -2,6 +2,8 @@
 import { ref } from "vue";
 import { Head, useForm, Link, router } from "@inertiajs/vue3";
 
+defineProps<{ errors?: Record<string, string> }>();
+
 const form = useForm({
   name: "",
   nickname: "",
@@ -39,15 +41,12 @@ const removePhoto = () => {
 };
 
 const submit = () => {
-  router.post("/players", {
-    name: form.name,
-    nickname: form.nickname,
-    document_id: form.document_id,
-    phone: form.phone,
-    position: form.position,
-    photo: form.photo,
-  }, {
+  form.post("/players", {
     forceFormData: true,
+    preserveScroll: true,
+    onSuccess: () => {
+      router.visit("/players");
+    },
   });
 };
 </script>
@@ -135,9 +134,11 @@ const submit = () => {
             class="mb-4"
           />
           <div class="d-flex ga-4">
-            <v-btn type="submit" color="primary" :loading="form.processing">Crear Jugador</v-btn>
+            <v-btn type="submit" color="primary" :loading="form.processing" :disabled="form.processing">
+              Crear Jugador
+            </v-btn>
             <Link href="/players" class="text-decoration-none">
-              <v-btn variant="outlined">Cancelar</v-btn>
+              <v-btn variant="outlined" :disabled="form.processing">Cancelar</v-btn>
             </Link>
           </div>
         </v-form>

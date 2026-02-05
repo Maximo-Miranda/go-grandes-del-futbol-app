@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { Head, useForm, Link, router } from "@inertiajs/vue3";
 
 const props = defineProps<{ player: any; errors?: Record<string, string> }>();
 
+// Initialize form with reactive props
 const form = useForm({
+  _method: 'PUT' as const,
   name: props.player.name,
   nickname: props.player.nickname || "",
   document_id: props.player.document_id || "",
@@ -13,6 +15,18 @@ const form = useForm({
   photo: null as File | null,
   remove_photo: false,
 });
+
+// Watch for prop changes (SPA navigation)
+watch(() => props.player, (newPlayer) => {
+  form.name = newPlayer.name;
+  form.nickname = newPlayer.nickname || "";
+  form.document_id = newPlayer.document_id || "";
+  form.phone = newPlayer.phone || "";
+  form.position = newPlayer.position || "";
+  form.photo = null;
+  form.remove_photo = false;
+  photoPreview.value = null;
+}, { deep: true });
 
 const photoPreview = ref<string | null>(null);
 const currentPhotoUrl = computed(() => {
@@ -56,17 +70,16 @@ const displayPhoto = computed(() => {
 });
 
 const submit = () => {
-  router.post(`/players/${props.player.id}`, {
-    _method: 'PUT',
-    name: form.name,
-    nickname: form.nickname,
-    document_id: form.document_id,
-    phone: form.phone,
-    position: form.position,
-    photo: form.photo,
-    remove_photo: form.remove_photo ? 'true' : '',
-  }, {
+  form.transform((data) => ({
+    ...data,
+    remove_photo: data.remove_photo ? 'true' : '',
+  })).post(`/players/${props.player.id}`, {
     forceFormData: true,
+    preserveScroll: true,
+    onSuccess: () => {
+      // Navigate to player detail with SPA behavior
+      router.visit(`/players/${props.player.id}`);
+    },
   });
 };
 </script>
@@ -154,9 +167,11 @@ const submit = () => {
             class="mb-4"
           />
           <div class="d-flex ga-4">
-            <v-btn type="submit" color="primary" :loading="form.processing">Guardar</v-btn>
+            <v-btn type="submit" color="primary" :loading="form.processing" :disabled="form.processing">
+              Guardar
+            </v-btn>
             <Link :href="`/players/${player.id}`" class="text-decoration-none">
-              <v-btn variant="outlined">Cancelar</v-btn>
+              <v-btn variant="outlined" :disabled="form.processing">Cancelar</v-btn>
             </Link>
           </div>
         </v-form>

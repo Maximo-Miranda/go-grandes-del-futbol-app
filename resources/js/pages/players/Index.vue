@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { Head, usePage, router, Link } from "@inertiajs/vue3";
+import { Head, router, Link } from "@inertiajs/vue3";
+import { computed } from "vue";
 
-const page = usePage<{ players: any[] }>();
-const players = page.props.players || [];
+// Use defineProps for reactive SPA behavior
+const props = defineProps<{ players: any[] }>();
+
+// Computed to ensure reactivity
+const players = computed(() => props.players || []);
 
 const deletePlayer = (id: number) => {
   if (confirm("¿Estás seguro de eliminar este jugador?")) {
     router.delete(`/players/${id}`, {
+      preserveScroll: true,
       onSuccess: () => {
-        router.visit(window.location.href, { preserveScroll: true });
+        // Force refresh to update the list
+        router.reload({ only: ['players'] });
       },
     });
   }

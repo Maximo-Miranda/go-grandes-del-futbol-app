@@ -12,6 +12,7 @@ import (
 	"github.com/goravel/framework/facades"
 	"github.com/goravel/framework/support/path"
 
+	"grandesdelfutbol/app/http/requests/player"
 	"grandesdelfutbol/app/inertia"
 	"grandesdelfutbol/app/models"
 )
@@ -38,23 +39,44 @@ func (c *PlayerController) Create(ctx http.Context) http.Response {
 }
 
 func (c *PlayerController) Store(ctx http.Context) http.Response {
-	player := models.Player{
-		Name:       ctx.Request().Input("name"),
-		Nickname:   ctx.Request().Input("nickname"),
-		DocumentID: ctx.Request().Input("document_id"),
-		Phone:      ctx.Request().Input("phone"),
-		Position:   ctx.Request().Input("position"),
+	var request player.StorePlayerRequest
+	errors, err := ctx.Request().ValidateRequest(&request)
+	if err != nil {
+		return c.inertia.Render(ctx, "players/Create", map[string]any{
+			"errors": map[string]string{"name": "Error de validación"},
+		})
+	}
+
+	if errors != nil && errors.All() != nil && len(errors.All()) > 0 {
+		// Convert validation errors to simple map
+		errorMap := make(map[string]string)
+		for field, msgs := range errors.All() {
+			if len(msgs) > 0 {
+				errorMap[field] = msgs[0]
+			}
+		}
+		return c.inertia.Render(ctx, "players/Create", map[string]any{
+			"errors": errorMap,
+		})
+	}
+
+	newPlayer := models.Player{
+		Name:       request.Name,
+		Nickname:   request.Nickname,
+		DocumentID: request.DocumentID,
+		Phone:      request.Phone,
+		Position:   request.Position,
 	}
 
 	// Handle photo upload
 	if file, err := ctx.Request().File("photo"); err == nil && file != nil {
 		photoPath, uploadErr := c.handlePhotoUpload(file)
 		if uploadErr == nil {
-			player.Photo = photoPath
+			newPlayer.Photo = photoPath
 		}
 	}
 
-	if err := facades.Orm().Query().Create(&player); err != nil {
+	if err := facades.Orm().Query().Create(&newPlayer); err != nil {
 		return c.inertia.Render(ctx, "players/Create", map[string]any{
 			"errors": map[string]string{"name": "Error al crear el jugador"},
 		})
@@ -65,8 +87,8 @@ func (c *PlayerController) Store(ctx http.Context) http.Response {
 
 func (c *PlayerController) Show(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var player models.Player
-	if err := facades.Orm().Query().Find(&player, id); err != nil {
+	var playerModel models.Player
+	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
 		return ctx.Response().Redirect(http.StatusFound, "/players")
 	}
 
@@ -164,7 +186,7 @@ func (c *PlayerController) Show(ctx http.Context) http.Response {
 	}
 
 	return c.inertia.Render(ctx, "players/Show", map[string]any{
-		"player": player,
+		"player": playerModel,
 		"stats": map[string]any{
 			"goals":         goals,
 			"assists":       assists,
@@ -178,68 +200,91 @@ func (c *PlayerController) Show(ctx http.Context) http.Response {
 
 func (c *PlayerController) Edit(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var player models.Player
-	if err := facades.Orm().Query().Find(&player, id); err != nil {
+	var playerModel models.Player
+	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
 		return ctx.Response().Redirect(http.StatusFound, "/players")
 	}
 
 	return c.inertia.Render(ctx, "players/Edit", map[string]any{
-		"player": player,
+		"player": playerModel,
 	})
 }
 
 func (c *PlayerController) Update(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var player models.Player
-	if err := facades.Orm().Query().Find(&player, id); err != nil {
+	var playerModel models.Player
+	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
 		return ctx.Response().Redirect(http.StatusFound, "/players")
 	}
 
-	player.Name = ctx.Request().Input("name", player.Name)
-	player.Nickname = ctx.Request().Input("nickname", player.Nickname)
-	player.DocumentID = ctx.Request().Input("document_id", player.DocumentID)
-	player.Phone = ctx.Request().Input("phone", player.Phone)
-	player.Position = ctx.Request().Input("position", player.Position)
+	var request player.UpdatePlayerRequest
+	errors, err := ctx.Request().ValidateRequest(&request)
+	if err != nil {
+		return c.inertia.Render(ctx, "players/Edit", map[string]any{
+			"player": playerModel,
+			"errors": map[string]string{"name": "Error de validación"},
+		})
+	}
+
+	if errors != nil && errors.All() != nil && len(errors.All()) > 0 {
+		// Convert validation errors to simple map
+		errorMap := make(map[string]string)
+		for field, msgs := range errors.All() {
+			if len(msgs) > 0 {
+				errorMap[field] = msgs[0]
+			}
+		}
+		return c.inertia.Render(ctx, "players/Edit", map[string]any{
+			"player": playerModel,
+			"errors": errorMap,
+		})
+	}
+
+	playerModel.Name = request.Name
+	playerModel.Nickname = request.Nickname
+	playerModel.DocumentID = request.DocumentID
+	playerModel.Phone = request.Phone
+	playerModel.Position = request.Position
 
 	// Handle photo upload
 	if file, err := ctx.Request().File("photo"); err == nil && file != nil {
 		// Delete old photo if exists
-		if player.Photo != "" {
-			oldPath := path.Storage("app/public/" + player.Photo)
+		if playerModel.Photo != "" {
+			oldPath := path.Storage("app/public/" + playerModel.Photo)
 			os.Remove(oldPath)
 		}
 
 		photoPath, uploadErr := c.handlePhotoUpload(file)
 		if uploadErr == nil {
-			player.Photo = photoPath
+			playerModel.Photo = photoPath
 		}
 	}
 
 	// Handle photo removal
-	if ctx.Request().Input("remove_photo") == "true" && player.Photo != "" {
-		oldPath := path.Storage("app/public/" + player.Photo)
+	if request.RemovePhoto == "true" && playerModel.Photo != "" {
+		oldPath := path.Storage("app/public/" + playerModel.Photo)
 		os.Remove(oldPath)
-		player.Photo = ""
+		playerModel.Photo = ""
 	}
 
-	facades.Orm().Query().Save(&player)
+	facades.Orm().Query().Save(&playerModel)
 	return ctx.Response().Redirect(http.StatusFound, "/players/"+id)
 }
 
 func (c *PlayerController) Destroy(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var player models.Player
-	if err := facades.Orm().Query().Find(&player, id); err != nil {
+	var playerModel models.Player
+	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
 		return ctx.Response().Redirect(http.StatusFound, "/players")
 	}
 
 	// Delete photo file if exists
-	if player.Photo != "" {
-		photoPath := path.Storage("app/public/" + player.Photo)
+	if playerModel.Photo != "" {
+		photoPath := path.Storage("app/public/" + playerModel.Photo)
 		os.Remove(photoPath)
 	}
 
-	facades.Orm().Query().Delete(&player)
+	facades.Orm().Query().Delete(&playerModel)
 	return ctx.Response().Redirect(http.StatusFound, "/players")
 }
 
