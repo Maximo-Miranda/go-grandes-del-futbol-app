@@ -6,7 +6,11 @@ const venues = page.props.venues || [];
 
 const deleteVenue = (id: number) => {
   if (confirm("¿Eliminar esta sede?")) {
-    router.delete(`/venues/${id}`);
+    router.delete(`/venues/${id}`, {
+      onSuccess: () => {
+        router.reload({ only: ["venues"] });
+      },
+    });
   }
 };
 </script>

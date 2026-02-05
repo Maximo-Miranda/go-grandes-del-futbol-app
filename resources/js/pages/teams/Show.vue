@@ -46,6 +46,9 @@ const removePlayer = (playerId: number) => {
   if (confirm("¿Quitar este jugador del equipo?")) {
     router.delete(`/teams/${team.id}/players/${playerId}`, {
       preserveScroll: true,
+      onSuccess: () => {
+        router.reload({ only: ["players"] });
+      },
     });
   }
 };

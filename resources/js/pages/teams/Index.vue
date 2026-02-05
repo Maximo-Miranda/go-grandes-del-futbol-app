@@ -8,7 +8,11 @@ const deleteTeam = (id: number, event: Event) => {
   event.preventDefault();
   event.stopPropagation();
   if (confirm("¿Estás seguro de eliminar este equipo?")) {
-    router.delete(`/teams/${id}`);
+    router.delete(`/teams/${id}`, {
+      onSuccess: () => {
+        router.reload({ only: ["teams"] });
+      },
+    });
   }
 };
 </script>

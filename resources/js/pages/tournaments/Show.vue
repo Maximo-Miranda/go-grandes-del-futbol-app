@@ -52,6 +52,9 @@ const removeTeam = (teamId: number) => {
   if (confirm("¿Quitar este equipo del torneo?")) {
     router.delete(`/tournaments/${tournament.id}/teams/${teamId}`, {
       preserveScroll: true,
+      onSuccess: () => {
+        router.reload({ only: ["teams", "standings"] });
+      },
     });
   }
 };

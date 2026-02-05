@@ -18,7 +18,11 @@ const formatDate = (dateStr: string | null) => {
 
 const deleteTournament = (id: number) => {
   if (confirm("¿Estás seguro de eliminar este torneo?")) {
-    router.delete(`/tournaments/${id}`);
+    router.delete(`/tournaments/${id}`, {
+      onSuccess: () => {
+        router.reload({ only: ["tournaments"] });
+      },
+    });
   }
 };
 </script>

@@ -128,13 +128,18 @@ const submitResult = () => {
     preserveScroll: true,
     onSuccess: () => {
       showResultDialog.value = false;
+      router.reload({ only: ["match"] });
     },
   });
 };
 
 const closeMatch = () => {
   if (confirm("¿Cerrar el partido y finalizar? Esta acción actualizará las clasificaciones.")) {
-    router.post(`/matches/${match.id}/close`);
+    router.post(`/matches/${match.id}/close`, {}, {
+      onSuccess: () => {
+        router.reload({ only: ["match"] });
+      },
+    });
   }
 };
 
@@ -151,13 +156,19 @@ const submitEvent = () => {
     onSuccess: () => {
       showEventDialog.value = false;
       eventForm.reset();
+      router.reload({ only: ["events"] });
     },
   });
 };
 
 const deleteEvent = (eventId: number) => {
   if (confirm("¿Eliminar este evento?")) {
-    router.delete(`/matches/${match.id}/events/${eventId}`, { preserveScroll: true });
+    router.delete(`/matches/${match.id}/events/${eventId}`, {
+      preserveScroll: true,
+      onSuccess: () => {
+        router.reload({ only: ["events"] });
+      },
+    });
   }
 };
 
@@ -179,13 +190,19 @@ const submitLineup = () => {
     onSuccess: () => {
       showLineupDialog.value = false;
       lineupForm.reset();
+      router.reload({ only: ["lineups"] });
     },
   });
 };
 
 const removeLineup = (playerId: number) => {
   if (confirm("¿Eliminar jugador de la alineación?")) {
-    router.delete(`/matches/${match.id}/lineups/${playerId}`, { preserveScroll: true });
+    router.delete(`/matches/${match.id}/lineups/${playerId}`, {
+      preserveScroll: true,
+      onSuccess: () => {
+        router.reload({ only: ["lineups"] });
+      },
+    });
   }
 };
 
