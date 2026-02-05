@@ -42,7 +42,7 @@ const toggleRail = () => {
   localStorage.setItem("drawer-rail", String(rail.value));
 };
 
-const logout = () => router.post("/logout");
+const logout = () => router.post("/auth/logout");
 
 const navItems = [
   { title: "Dashboard", icon: "mdi-view-dashboard", to: "/dashboard" },
