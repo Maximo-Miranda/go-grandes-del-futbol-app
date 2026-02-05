@@ -266,13 +266,14 @@ func (c *PlayerController) handlePhotoUpload(file filesystem.File) (string, erro
 
 	// Generate unique filename
 	filename := fmt.Sprintf("player_%d%s", time.Now().UnixNano(), ext)
-	uploadPath := path.Storage("app/public/players")
 
-	// Ensure directory exists
-	os.MkdirAll(uploadPath, 0755)
+	// Ensure directory exists (absolute path for mkdir)
+	uploadDir := path.Storage("app/public/players")
+	os.MkdirAll(uploadDir, 0755)
 
-	// Save file
-	if _, err := file.StoreAs(uploadPath, filename); err != nil {
+	// Save file using relative path to disk root (storage/app/)
+	// StoreAs expects path relative to the disk's root, not absolute
+	if _, err := file.StoreAs("public/players", filename); err != nil {
 		return "", err
 	}
 
