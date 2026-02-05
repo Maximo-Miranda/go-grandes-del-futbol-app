@@ -47,12 +47,14 @@ func (c *PlayerController) Store(ctx http.Context) http.Response {
 		})
 	}
 
-	if errors != nil && errors.All() != nil && len(errors.All()) > 0 {
-		// Convert validation errors to simple map
+	if errors != nil {
+		// Convert validation errors to simple map for Inertia
 		errorMap := make(map[string]string)
-		for field, msgs := range errors.All() {
-			if len(msgs) > 0 {
-				errorMap[field] = msgs[0]
+		for field, ruleMessages := range errors.All() {
+			// ruleMessages is map[string]string where key is rule name, value is message
+			for _, msg := range ruleMessages {
+				errorMap[field] = msg
+				break // Take only the first message per field
 			}
 		}
 		return c.inertia.Render(ctx, "players/Create", map[string]any{
@@ -226,12 +228,14 @@ func (c *PlayerController) Update(ctx http.Context) http.Response {
 		})
 	}
 
-	if errors != nil && errors.All() != nil && len(errors.All()) > 0 {
-		// Convert validation errors to simple map
+	if errors != nil {
+		// Convert validation errors to simple map for Inertia
 		errorMap := make(map[string]string)
-		for field, msgs := range errors.All() {
-			if len(msgs) > 0 {
-				errorMap[field] = msgs[0]
+		for field, ruleMessages := range errors.All() {
+			// ruleMessages is map[string]string where key is rule name, value is message
+			for _, msg := range ruleMessages {
+				errorMap[field] = msg
+				break // Take only the first message per field
 			}
 		}
 		return c.inertia.Render(ctx, "players/Edit", map[string]any{
