@@ -89,6 +89,7 @@ func Web() {
 			router.Get("/players/{id}/edit", playerController.Edit)
 			router.Put("/players/{id}", playerController.Update)
 			router.Delete("/players/{id}", playerController.Destroy)
+			router.Get("/players/photo/{filename}", playerController.Photo)
 
 			// Matches
 			matchController := controllers.NewMatchController()
@@ -100,6 +101,11 @@ func Web() {
 			router.Put("/matches/{id}", matchController.Update)
 			router.Delete("/matches/{id}", matchController.Destroy)
 			router.Post("/matches/{id}/result", matchController.RecordResult)
+			router.Post("/matches/{id}/close", matchController.CloseMatch)
+			router.Post("/matches/{id}/events", matchController.AddEvent)
+			router.Delete("/matches/{id}/events/{eventId}", matchController.DeleteEvent)
+			router.Post("/matches/{id}/lineups", matchController.AddLineup)
+			router.Delete("/matches/{id}/lineups/{playerId}", matchController.RemoveLineup)
 
 			// Standings
 			standingController := controllers.NewStandingController()

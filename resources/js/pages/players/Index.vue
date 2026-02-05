@@ -9,6 +9,33 @@ const deletePlayer = (id: number) => {
     router.delete(`/players/${id}`);
   }
 };
+
+const getPhotoUrl = (player: any): string | undefined => {
+  if (player.photo) {
+    return `/players/photo/${player.photo.split('/').pop()}`;
+  }
+  return undefined;
+};
+
+const getPositionLabel = (position: string) => {
+  const labels: Record<string, string> = {
+    goalkeeper: "Portero",
+    defender: "Defensa",
+    midfielder: "Mediocampista",
+    forward: "Delantero",
+  };
+  return labels[position] || position || "—";
+};
+
+const getPositionColor = (position: string) => {
+  const colors: Record<string, string> = {
+    goalkeeper: "amber",
+    defender: "blue",
+    midfielder: "green",
+    forward: "red",
+  };
+  return colors[position] || "grey";
+};
 </script>
 
 <template>
@@ -24,6 +51,7 @@ const deletePlayer = (id: number) => {
       <v-table v-if="players.length > 0">
         <thead>
           <tr>
+            <th style="width: 60px;"></th>
             <th>Nombre</th>
             <th>Apodo</th>
             <th>Posición</th>
@@ -34,12 +62,25 @@ const deletePlayer = (id: number) => {
         <tbody>
           <tr v-for="p in players" :key="p.id">
             <td>
+              <v-avatar size="40" :color="getPositionColor(p.position)">
+                <v-img v-if="getPhotoUrl(p)" :src="getPhotoUrl(p)" cover />
+                <span v-else class="text-white text-body-2 font-weight-bold">
+                  {{ (p.nickname || p.name).charAt(0).toUpperCase() }}
+                </span>
+              </v-avatar>
+            </td>
+            <td>
               <Link :href="`/players/${p.id}`" class="text-primary font-weight-medium">
                 {{ p.name }}
               </Link>
             </td>
             <td>{{ p.nickname || "—" }}</td>
-            <td>{{ p.position || "—" }}</td>
+            <td>
+              <v-chip v-if="p.position" :color="getPositionColor(p.position)" size="small" variant="tonal">
+                {{ getPositionLabel(p.position) }}
+              </v-chip>
+              <span v-else>—</span>
+            </td>
             <td>{{ p.phone || "—" }}</td>
             <td>
               <Link :href="`/players/${p.id}/edit`" class="text-decoration-none">

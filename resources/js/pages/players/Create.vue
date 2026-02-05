@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Head, useForm, Link } from "@inertiajs/vue3";
+import { ref } from "vue";
+import { Head, useForm, Link, router } from "@inertiajs/vue3";
 
 const form = useForm({
   name: "",
@@ -7,7 +8,10 @@ const form = useForm({
   document_id: "",
   phone: "",
   position: "",
+  photo: null as File | null,
 });
+
+const photoPreview = ref<string | null>(null);
 
 const positions = [
   { title: "Portero", value: "goalkeeper" },
@@ -16,7 +20,36 @@ const positions = [
   { title: "Delantero", value: "forward" },
 ];
 
-const submit = () => form.post("/players");
+const handlePhotoChange = (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (file) {
+    form.photo = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      photoPreview.value = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+const removePhoto = () => {
+  form.photo = null;
+  photoPreview.value = null;
+};
+
+const submit = () => {
+  router.post("/players", {
+    name: form.name,
+    nickname: form.nickname,
+    document_id: form.document_id,
+    phone: form.phone,
+    position: form.position,
+    photo: form.photo,
+  }, {
+    forceFormData: true,
+  });
+};
 </script>
 
 <template>
@@ -26,6 +59,44 @@ const submit = () => form.post("/players");
     <v-card>
       <v-card-text class="pa-6">
         <v-form @submit.prevent="submit">
+          <!-- Photo Upload -->
+          <div class="mb-6">
+            <label class="text-subtitle-2 d-block mb-2">Foto del Jugador</label>
+            <div class="d-flex align-center ga-4">
+              <v-avatar size="100" color="grey-lighten-3">
+                <v-img v-if="photoPreview" :src="photoPreview" cover />
+                <v-icon v-else size="48" color="grey-lighten-1">mdi-account</v-icon>
+              </v-avatar>
+              <div>
+                <v-btn 
+                  variant="outlined" 
+                  prepend-icon="mdi-camera"
+                  @click="($refs.photoInput as HTMLInputElement).click()"
+                >
+                  {{ photoPreview ? 'Cambiar Foto' : 'Subir Foto' }}
+                </v-btn>
+                <v-btn 
+                  v-if="photoPreview"
+                  variant="text" 
+                  color="error"
+                  icon="mdi-delete"
+                  @click="removePhoto"
+                  class="ml-2"
+                />
+                <input
+                  ref="photoInput"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style="display: none"
+                  @change="handlePhotoChange"
+                />
+                <p class="text-caption text-medium-emphasis mt-2">
+                  Formatos: JPG, PNG, WebP. Max 5MB.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <v-text-field
             v-model="form.name"
             label="Nombre Completo *"

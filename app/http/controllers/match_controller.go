@@ -224,13 +224,52 @@ func (c *MatchController) Show(ctx http.Context) http.Response {
 	var match models.Match
 	if err := facades.Orm().Query().
 		With("HomeTeam").With("AwayTeam").With("Tournament").With("Venue").
-		With("Events").With("Lineups").
 		Find(&match, id); err != nil {
 		return ctx.Response().Redirect(http.StatusFound, "/matches")
 	}
 
+	// Get events with player info
+	var events []models.MatchEvent
+	facades.Orm().Query().
+		With("Player").With("Team").
+		Where("match_id = ?", id).
+		Order("minute ASC").
+		Find(&events)
+
+	// Get lineups with player info
+	var lineups []models.MatchLineup
+	facades.Orm().Query().
+		With("Player").With("Team").
+		Where("match_id = ?", id).
+		Find(&lineups)
+
+	// Get available players for both teams (for adding events)
+	var homeTeamPlayers []models.Player
+	var awayTeamPlayers []models.Player
+
+	// Players via team_players table
+	var homeTeamPlayerLinks []models.TeamPlayer
+	var awayTeamPlayerLinks []models.TeamPlayer
+	facades.Orm().Query().With("Player").Where("team_id = ?", match.HomeTeamID).Find(&homeTeamPlayerLinks)
+	facades.Orm().Query().With("Player").Where("team_id = ?", match.AwayTeamID).Find(&awayTeamPlayerLinks)
+
+	for _, tp := range homeTeamPlayerLinks {
+		if tp.Player != nil {
+			homeTeamPlayers = append(homeTeamPlayers, *tp.Player)
+		}
+	}
+	for _, tp := range awayTeamPlayerLinks {
+		if tp.Player != nil {
+			awayTeamPlayers = append(awayTeamPlayers, *tp.Player)
+		}
+	}
+
 	return c.inertia.Render(ctx, "matches/Show", map[string]any{
-		"match": match,
+		"match":           match,
+		"events":          events,
+		"lineups":         lineups,
+		"homeTeamPlayers": homeTeamPlayers,
+		"awayTeamPlayers": awayTeamPlayers,
 	})
 }
 
@@ -254,6 +293,147 @@ func (c *MatchController) RecordResult(ctx http.Context) http.Response {
 	c.updateStandings(&match)
 
 	return ctx.Response().Redirect(http.StatusFound, "/matches/"+id)
+}
+
+// CloseMatch marks a match as finished without changing the score
+func (c *MatchController) CloseMatch(ctx http.Context) http.Response {
+	id := ctx.Request().Route("id")
+	var match models.Match
+	if err := facades.Orm().Query().Find(&match, id); err != nil {
+		return ctx.Response().Redirect(http.StatusFound, "/matches")
+	}
+
+	match.Status = "completed"
+	facades.Orm().Query().Save(&match)
+
+	// Update standings if not already done
+	c.updateStandings(&match)
+
+	return ctx.Response().Redirect(http.StatusFound, "/matches/"+id)
+}
+
+// AddEvent adds a match event (goal, assist, card, etc.)
+func (c *MatchController) AddEvent(ctx http.Context) http.Response {
+	matchID := ctx.Request().Route("id")
+	var match models.Match
+	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
+		return ctx.Response().Redirect(http.StatusFound, "/matches")
+	}
+
+	playerID, _ := strconv.ParseUint(ctx.Request().Input("player_id"), 10, 64)
+	teamID, _ := strconv.ParseUint(ctx.Request().Input("team_id"), 10, 64)
+	minute, _ := strconv.Atoi(ctx.Request().Input("minute", "0"))
+	eventType := ctx.Request().Input("event_type")
+
+	if playerID == 0 || teamID == 0 || eventType == "" {
+		return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+	}
+
+	event := models.MatchEvent{
+		MatchID:   match.ID,
+		PlayerID:  uint(playerID),
+		TeamID:    uint(teamID),
+		EventType: eventType,
+		Minute:    minute,
+	}
+
+	facades.Orm().Query().Create(&event)
+
+	// If it's a goal, update the match score
+	if eventType == "goal" {
+		if uint(teamID) == match.HomeTeamID {
+			match.HomeScore++
+		} else if uint(teamID) == match.AwayTeamID {
+			match.AwayScore++
+		}
+		facades.Orm().Query().Save(&match)
+	}
+
+	return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+}
+
+// DeleteEvent removes a match event
+func (c *MatchController) DeleteEvent(ctx http.Context) http.Response {
+	matchID := ctx.Request().Route("id")
+	eventID := ctx.Request().Route("eventId")
+
+	var match models.Match
+	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
+		return ctx.Response().Redirect(http.StatusFound, "/matches")
+	}
+
+	var event models.MatchEvent
+	if err := facades.Orm().Query().Where("id = ? AND match_id = ?", eventID, matchID).Find(&event); err != nil || event.ID == 0 {
+		return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+	}
+
+	// If it's a goal, decrement the score
+	if event.EventType == "goal" {
+		if event.TeamID == match.HomeTeamID {
+			if match.HomeScore > 0 {
+				match.HomeScore--
+			}
+		} else if event.TeamID == match.AwayTeamID {
+			if match.AwayScore > 0 {
+				match.AwayScore--
+			}
+		}
+		facades.Orm().Query().Save(&match)
+	}
+
+	facades.Orm().Query().Delete(&event)
+
+	return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+}
+
+// AddLineup adds a player to the match lineup
+func (c *MatchController) AddLineup(ctx http.Context) http.Response {
+	matchID := ctx.Request().Route("id")
+	var match models.Match
+	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
+		return ctx.Response().Redirect(http.StatusFound, "/matches")
+	}
+
+	playerID, _ := strconv.ParseUint(ctx.Request().Input("player_id"), 10, 64)
+	teamID, _ := strconv.ParseUint(ctx.Request().Input("team_id"), 10, 64)
+	minutesPlayed, _ := strconv.Atoi(ctx.Request().Input("minutes_played", "90"))
+	isStarter := ctx.Request().Input("is_starter") == "true"
+
+	if playerID == 0 || teamID == 0 {
+		return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+	}
+
+	// Check if player is already in lineup
+	var existing models.MatchLineup
+	facades.Orm().Query().Where("match_id = ? AND player_id = ?", matchID, playerID).First(&existing)
+	if existing.ID > 0 {
+		// Update existing
+		existing.MinutesPlayed = minutesPlayed
+		existing.IsStarter = isStarter
+		facades.Orm().Query().Save(&existing)
+	} else {
+		// Create new
+		lineup := models.MatchLineup{
+			MatchID:       match.ID,
+			PlayerID:      uint(playerID),
+			TeamID:        uint(teamID),
+			IsStarter:     isStarter,
+			MinutesPlayed: minutesPlayed,
+		}
+		facades.Orm().Query().Create(&lineup)
+	}
+
+	return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+}
+
+// RemoveLineup removes a player from the match lineup
+func (c *MatchController) RemoveLineup(ctx http.Context) http.Response {
+	matchID := ctx.Request().Route("id")
+	playerID := ctx.Request().Route("playerId")
+
+	facades.Orm().Query().Where("match_id = ? AND player_id = ?", matchID, playerID).Delete(&models.MatchLineup{})
+
+	return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
 }
 
 func (c *MatchController) updateStandings(match *models.Match) {

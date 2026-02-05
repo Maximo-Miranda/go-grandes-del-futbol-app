@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Head, useForm, Link } from "@inertiajs/vue3";
+import { ref, computed } from "vue";
+import { Head, useForm, Link, router } from "@inertiajs/vue3";
 
 const props = defineProps<{ player: any; errors?: Record<string, string> }>();
 
@@ -9,6 +10,16 @@ const form = useForm({
   document_id: props.player.document_id || "",
   phone: props.player.phone || "",
   position: props.player.position || "",
+  photo: null as File | null,
+  remove_photo: false,
+});
+
+const photoPreview = ref<string | null>(null);
+const currentPhotoUrl = computed(() => {
+  if (props.player.photo) {
+    return `/players/photo/${props.player.photo.split('/').pop()}`;
+  }
+  return null;
 });
 
 const positions = [
@@ -18,7 +29,46 @@ const positions = [
   { title: "Delantero", value: "forward" },
 ];
 
-const submit = () => form.put(`/players/${props.player.id}`);
+const handlePhotoChange = (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (file) {
+    form.photo = file;
+    form.remove_photo = false;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      photoPreview.value = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+const removePhoto = () => {
+  form.photo = null;
+  form.remove_photo = true;
+  photoPreview.value = null;
+};
+
+const displayPhoto = computed(() => {
+  if (form.remove_photo) return null;
+  if (photoPreview.value) return photoPreview.value;
+  return currentPhotoUrl.value;
+});
+
+const submit = () => {
+  router.post(`/players/${props.player.id}`, {
+    _method: 'PUT',
+    name: form.name,
+    nickname: form.nickname,
+    document_id: form.document_id,
+    phone: form.phone,
+    position: form.position,
+    photo: form.photo,
+    remove_photo: form.remove_photo ? 'true' : '',
+  }, {
+    forceFormData: true,
+  });
+};
 </script>
 
 <template>
@@ -28,6 +78,44 @@ const submit = () => form.put(`/players/${props.player.id}`);
     <v-card>
       <v-card-text class="pa-6">
         <v-form @submit.prevent="submit">
+          <!-- Photo Upload -->
+          <div class="mb-6">
+            <label class="text-subtitle-2 d-block mb-2">Foto del Jugador</label>
+            <div class="d-flex align-center ga-4">
+              <v-avatar size="100" color="grey-lighten-3">
+                <v-img v-if="displayPhoto" :src="displayPhoto" cover />
+                <v-icon v-else size="48" color="grey-lighten-1">mdi-account</v-icon>
+              </v-avatar>
+              <div>
+                <v-btn 
+                  variant="outlined" 
+                  prepend-icon="mdi-camera"
+                  @click="($refs.photoInput as HTMLInputElement).click()"
+                >
+                  {{ displayPhoto ? 'Cambiar Foto' : 'Subir Foto' }}
+                </v-btn>
+                <v-btn 
+                  v-if="displayPhoto"
+                  variant="text" 
+                  color="error"
+                  icon="mdi-delete"
+                  @click="removePhoto"
+                  class="ml-2"
+                />
+                <input
+                  ref="photoInput"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style="display: none"
+                  @change="handlePhotoChange"
+                />
+                <p class="text-caption text-medium-emphasis mt-2">
+                  Formatos: JPG, PNG, WebP. Max 5MB.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <v-text-field
             v-model="form.name"
             label="Nombre Completo *"
