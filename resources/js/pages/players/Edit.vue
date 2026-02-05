@@ -6,7 +6,6 @@ const props = defineProps<{ player: any; errors?: Record<string, string> }>();
 
 // Initialize form with reactive props
 const form = useForm({
-  _method: 'PUT' as const,
   name: props.player.name,
   nickname: props.player.nickname || "",
   document_id: props.player.document_id || "",
@@ -70,15 +69,30 @@ const displayPhoto = computed(() => {
 });
 
 const submit = () => {
-  form.transform((data) => ({
-    ...data,
-    remove_photo: data.remove_photo ? 'true' : '',
-  })).post(`/players/${props.player.id}`, {
+  // Use router.post with _method spoofing for file uploads
+  router.post(`/players/${props.player.id}`, {
+    _method: 'PUT',
+    name: form.name,
+    nickname: form.nickname,
+    document_id: form.document_id,
+    phone: form.phone,
+    position: form.position,
+    photo: form.photo,
+    remove_photo: form.remove_photo ? 'true' : '',
+  }, {
     forceFormData: true,
     preserveScroll: true,
-    onSuccess: () => {
-      // Navigate to player detail with SPA behavior
-      router.visit(`/players/${props.player.id}`);
+    onError: (errors) => {
+      // Map errors to form
+      Object.keys(errors).forEach(key => {
+        form.setError(key as any, errors[key]);
+      });
+    },
+    onStart: () => {
+      form.processing = true;
+    },
+    onFinish: () => {
+      form.processing = false;
     },
   });
 };
