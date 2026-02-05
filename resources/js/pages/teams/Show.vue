@@ -35,7 +35,7 @@ const addPlayer = () => {
           showAddPlayerDialog.value = false;
           selectedPlayerId.value = null;
           // Refresh the page data to update the list
-          router.reload({ only: ["players"] });
+          router.visit(window.location.href, { preserveScroll: true });
         },
       }
     );
@@ -47,7 +47,7 @@ const removePlayer = (playerId: number) => {
     router.delete(`/teams/${team.id}/players/${playerId}`, {
       preserveScroll: true,
       onSuccess: () => {
-        router.reload({ only: ["players"] });
+        router.visit(window.location.href, { preserveScroll: true });
       },
     });
   }

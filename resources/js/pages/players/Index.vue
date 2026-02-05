@@ -8,7 +8,7 @@ const deletePlayer = (id: number) => {
   if (confirm("¿Estás seguro de eliminar este jugador?")) {
     router.delete(`/players/${id}`, {
       onSuccess: () => {
-        router.reload({ only: ["players"] });
+        router.visit(window.location.href, { preserveScroll: true });
       },
     });
   }

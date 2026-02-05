@@ -10,7 +10,7 @@ const deleteTeam = (id: number, event: Event) => {
   if (confirm("¿Estás seguro de eliminar este equipo?")) {
     router.delete(`/teams/${id}`, {
       onSuccess: () => {
-        router.reload({ only: ["teams"] });
+        router.visit(window.location.href, { preserveScroll: true });
       },
     });
   }

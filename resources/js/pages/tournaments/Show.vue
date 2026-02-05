@@ -41,7 +41,7 @@ const addTeam = () => {
         onSuccess: () => {
           showAddTeamDialog.value = false;
           selectedTeamId.value = null;
-          router.reload({ only: ["teams"] });
+          router.visit(window.location.href, { preserveScroll: true });
         },
       }
     );
@@ -53,7 +53,7 @@ const removeTeam = (teamId: number) => {
     router.delete(`/tournaments/${tournament.id}/teams/${teamId}`, {
       preserveScroll: true,
       onSuccess: () => {
-        router.reload({ only: ["teams", "standings"] });
+        router.visit(window.location.href, { preserveScroll: true });
       },
     });
   }

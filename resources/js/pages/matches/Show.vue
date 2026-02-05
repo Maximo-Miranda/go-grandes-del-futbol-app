@@ -128,7 +128,7 @@ const submitResult = () => {
     preserveScroll: true,
     onSuccess: () => {
       showResultDialog.value = false;
-      router.reload({ only: ["match"] });
+      router.visit(window.location.href, { preserveScroll: true });
     },
   });
 };
@@ -137,7 +137,7 @@ const closeMatch = () => {
   if (confirm("¿Cerrar el partido y finalizar? Esta acción actualizará las clasificaciones.")) {
     router.post(`/matches/${match.id}/close`, {}, {
       onSuccess: () => {
-        router.reload({ only: ["match"] });
+        router.visit(window.location.href, { preserveScroll: true });
       },
     });
   }
@@ -156,7 +156,7 @@ const submitEvent = () => {
     onSuccess: () => {
       showEventDialog.value = false;
       eventForm.reset();
-      router.reload({ only: ["events"] });
+      router.visit(window.location.href, { preserveScroll: true });
     },
   });
 };
@@ -166,7 +166,7 @@ const deleteEvent = (eventId: number) => {
     router.delete(`/matches/${match.id}/events/${eventId}`, {
       preserveScroll: true,
       onSuccess: () => {
-        router.reload({ only: ["events"] });
+        router.visit(window.location.href, { preserveScroll: true });
       },
     });
   }
@@ -190,7 +190,7 @@ const submitLineup = () => {
     onSuccess: () => {
       showLineupDialog.value = false;
       lineupForm.reset();
-      router.reload({ only: ["lineups"] });
+      router.visit(window.location.href, { preserveScroll: true });
     },
   });
 };
@@ -200,7 +200,7 @@ const removeLineup = (playerId: number) => {
     router.delete(`/matches/${match.id}/lineups/${playerId}`, {
       preserveScroll: true,
       onSuccess: () => {
-        router.reload({ only: ["lineups"] });
+        router.visit(window.location.href, { preserveScroll: true });
       },
     });
   }
