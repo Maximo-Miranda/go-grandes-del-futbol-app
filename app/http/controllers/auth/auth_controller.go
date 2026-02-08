@@ -28,15 +28,15 @@ func (c *AuthController) ShowLogin(ctx http.Context) http.Response {
 
 func (c *AuthController) Login(ctx http.Context) http.Response {
 	var request auth.LoginRequest
-	errors, err := ctx.Request().ValidateRequest(&request)
+	validationErrors, err := ctx.Request().ValidateRequest(&request)
 	if err != nil {
 		return c.inertia.Render(ctx, "auth/Login", map[string]any{
 			"errors": map[string]string{"email": "Error de validación"},
 		})
 	}
-	if errors != nil {
+	if validationErrors != nil {
 		return c.inertia.Render(ctx, "auth/Login", map[string]any{
-			"errors": errors.All(),
+			"errors": inertia.ValidationErrors(validationErrors.All()),
 		})
 	}
 
@@ -66,15 +66,15 @@ func (c *AuthController) ShowRegister(ctx http.Context) http.Response {
 
 func (c *AuthController) Register(ctx http.Context) http.Response {
 	var request auth.RegisterRequest
-	errors, err := ctx.Request().ValidateRequest(&request)
+	validationErrors, err := ctx.Request().ValidateRequest(&request)
 	if err != nil {
 		return c.inertia.Render(ctx, "auth/Register", map[string]any{
 			"errors": map[string]string{"email": "Error de validación"},
 		})
 	}
-	if errors != nil {
+	if validationErrors != nil {
 		return c.inertia.Render(ctx, "auth/Register", map[string]any{
-			"errors": errors.All(),
+			"errors": inertia.ValidationErrors(validationErrors.All()),
 		})
 	}
 

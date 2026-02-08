@@ -73,11 +73,17 @@ func RateLimit(maxAttempts int, decayMinutes int) http.Middleware {
 		ctx.Response().Header("X-RateLimit-Remaining", strconv.Itoa(remaining))
 
 		if !allowed {
-			ctx.Response().Header("Retry-After", strconv.FormatInt(int64(time.Until(retryAfter).Seconds()), 10))
-			ctx.Response().Json(http.StatusTooManyRequests, http.Json{
-				"error":   "Too Many Requests",
-				"message": "Demasiados intentos. Por favor espera un momento.",
-			}).Abort()
+			retrySeconds := strconv.FormatInt(int64(time.Until(retryAfter).Seconds()), 10)
+			ctx.Response().Header("Retry-After", retrySeconds)
+
+			if ctx.Request().Header("X-Inertia") == "true" {
+				ctx.Response().Json(http.StatusTooManyRequests, http.Json{
+					"error":   "Too Many Requests",
+					"message": "Demasiados intentos. Por favor espera un momento.",
+				}).Abort()
+			} else {
+				ctx.Response().String(http.StatusTooManyRequests, "Demasiados intentos. Por favor espera un momento.").Abort()
+			}
 			return
 		}
 
@@ -86,5 +92,5 @@ func RateLimit(maxAttempts int, decayMinutes int) http.Middleware {
 }
 
 func RateLimitAuth() http.Middleware {
-	return RateLimit(5, 1)
+	return RateLimit(30, 1)
 }

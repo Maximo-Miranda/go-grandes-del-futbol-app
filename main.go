@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,16 +20,13 @@ func main() {
 	go func() {
 		if err := facades.Route().Run(); err != nil {
 			facades.Log().Errorf("Route Run error: %v", err)
+			fmt.Fprintf(os.Stderr, "Error: no se pudo iniciar el servidor: %v\n", err)
+			os.Exit(1)
 		}
 	}()
 
-	go func() {
-		<-quit
-		if err := facades.Route().Shutdown(); err != nil {
-			facades.Log().Errorf("Route Shutdown error: %v", err)
-		}
-		os.Exit(0)
-	}()
-
-	select {}
+	<-quit
+	if err := facades.Route().Shutdown(); err != nil {
+		facades.Log().Errorf("Route Shutdown error: %v", err)
+	}
 }

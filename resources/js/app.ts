@@ -1,9 +1,30 @@
 import { createApp, h } from "vue";
-import { createInertiaApp } from "@inertiajs/vue3";
+import { createInertiaApp, router } from "@inertiajs/vue3";
 import vuetify from "./plugins/vuetify";
+import { useToast } from "./composables/useToast";
 
 import AppLayout from "./layouts/AppLayout.vue";
 import AuthLayout from "./layouts/AuthLayout.vue";
+
+const toast = useToast();
+
+router.on("invalid", (event) => {
+  event.preventDefault();
+
+  const response = event.detail.response;
+  if (response.status === 429) {
+    toast.warning("Demasiados intentos. Espera un momento.");
+  } else if (response.status >= 500) {
+    toast.error("Error del servidor. Intenta de nuevo.");
+  } else {
+    toast.error("Ocurrió un error inesperado.");
+  }
+});
+
+router.on("exception", (event) => {
+  event.preventDefault();
+  toast.error("Error de conexión. Verifica tu internet.");
+});
 
 createInertiaApp({
   resolve: (name) => {

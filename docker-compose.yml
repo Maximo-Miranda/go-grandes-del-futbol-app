@@ -1,0 +1,12 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: grandes_del_futbol_development_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./storage/pgsql:/var/lib/postgresql/data

@@ -48,17 +48,8 @@ func (c *PlayerController) Store(ctx http.Context) http.Response {
 	}
 
 	if errors != nil {
-		// Convert validation errors to simple map for Inertia
-		errorMap := make(map[string]string)
-		for field, ruleMessages := range errors.All() {
-			// ruleMessages is map[string]string where key is rule name, value is message
-			for _, msg := range ruleMessages {
-				errorMap[field] = msg
-				break // Take only the first message per field
-			}
-		}
 		return c.inertia.Render(ctx, "players/Create", map[string]any{
-			"errors": errorMap,
+			"errors": inertia.ValidationErrors(errors.All()),
 		})
 	}
 
@@ -229,18 +220,9 @@ func (c *PlayerController) Update(ctx http.Context) http.Response {
 	}
 
 	if errors != nil {
-		// Convert validation errors to simple map for Inertia
-		errorMap := make(map[string]string)
-		for field, ruleMessages := range errors.All() {
-			// ruleMessages is map[string]string where key is rule name, value is message
-			for _, msg := range ruleMessages {
-				errorMap[field] = msg
-				break // Take only the first message per field
-			}
-		}
 		return c.inertia.Render(ctx, "players/Edit", map[string]any{
 			"player": playerModel,
-			"errors": errorMap,
+			"errors": inertia.ValidationErrors(errors.All()),
 		})
 	}
 

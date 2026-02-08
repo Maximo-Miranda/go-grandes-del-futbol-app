@@ -14,3 +14,9 @@ node_modules/
 public/build/
 gdf-server
 storage/logs/*.log
+storage/pgsql/
+
+# Docs
+docs/Goravel-v1.17/
+docs/InertiaJS-v2/
+docs/Vuetify-3/

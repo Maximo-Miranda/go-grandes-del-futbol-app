@@ -135,6 +135,17 @@ func (i *Inertia) renderHTML(ctx http.Context, pageData page) http.Response {
 	return ctx.Response().Data(200, "text/html; charset=utf-8", []byte(buf.String()))
 }
 
+func ValidationErrors(goravelErrors map[string]map[string]string) map[string]string {
+	errorMap := make(map[string]string, len(goravelErrors))
+	for field, ruleMessages := range goravelErrors {
+		for _, msg := range ruleMessages {
+			errorMap[field] = msg
+			break
+		}
+	}
+	return errorMap
+}
+
 func (i *Inertia) getManifestAssets() ([]string, []string) {
 	manifestPath := filepath.Join("public", "build", ".vite", "manifest.json")
 	data, err := os.ReadFile(manifestPath)
