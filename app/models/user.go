@@ -93,11 +93,14 @@ func (u *User) GetKey() string {
 	return ""
 }
 
-// Player returns the player associated with this user, if any
-func (u *User) Player() (*Player, error) {
+// GetPlayer returns the player profile associated with this user, if any
+func (u *User) GetPlayer() (*Player, error) {
 	var player Player
 	if err := facades.Orm().Query().Where("user_id = ?", u.ID).First(&player); err != nil {
 		return nil, err
+	}
+	if player.ID == 0 {
+		return nil, nil
 	}
 	return &player, nil
 }

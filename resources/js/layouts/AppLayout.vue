@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { Head, usePage, router, Link } from "@inertiajs/vue3";
+import { useDisplay } from "vuetify";
 import { useToast } from "../composables/useToast";
 
 interface PageProps extends Record<string, unknown> {
@@ -9,6 +10,7 @@ interface PageProps extends Record<string, unknown> {
 }
 
 const page = usePage<PageProps>();
+const { mobile } = useDisplay();
 const drawer = ref(true);
 const rail = ref(false);
 const mobileDrawer = ref(false);
@@ -16,17 +18,20 @@ const flash = computed(() => page.props.flash);
 const authUser = computed(() => page.props.auth?.user);
 const toast = useToast();
 
-const isMobile = computed(() => {
-    if (typeof window === "undefined") return false;
-    return window.innerWidth < 960;
-});
+const showFlash = (f: typeof flash.value) => {
+    if (f?.success) toast.success(f.success);
+    else if (f?.error) toast.error(f.error);
+    else if (f?.warning) toast.warning(f.warning);
+};
 
 onMounted(() => {
     const savedRail = localStorage.getItem("drawer-rail");
     if (savedRail !== null) rail.value = savedRail === "true";
-    if (flash.value?.success) toast.success(flash.value.success);
-    else if (flash.value?.error) toast.error(flash.value.error);
-    else if (flash.value?.warning) toast.warning(flash.value.warning);
+    showFlash(flash.value);
+});
+
+watch(flash, (newFlash) => {
+    showFlash(newFlash);
 });
 
 const toggleRail = () => {
@@ -56,7 +61,7 @@ const navItems = [
     <v-app>
         <v-app-bar color="primary" density="comfortable" flat>
             <v-app-bar-nav-icon
-                v-if="isMobile"
+                v-if="mobile"
                 @click="mobileDrawer = !mobileDrawer"
             />
             <v-app-bar-nav-icon v-else @click="toggleRail" />
@@ -89,6 +94,12 @@ const navItems = [
                     </v-btn>
                 </template>
                 <v-list density="compact">
+                    <v-list-item
+                        prepend-icon="mdi-account-circle"
+                        href="/profile/edit"
+                    >
+                        <v-list-item-title>Mi Perfil</v-list-item-title>
+                    </v-list-item>
                     <v-list-item prepend-icon="mdi-logout" @click="logout">
                         <v-list-item-title>Cerrar Sesión</v-list-item-title>
                     </v-list-item>
@@ -97,7 +108,7 @@ const navItems = [
         </v-app-bar>
 
         <v-navigation-drawer
-            v-if="!isMobile"
+            v-if="!mobile"
             v-model="drawer"
             :rail="rail"
             permanent
@@ -125,7 +136,7 @@ const navItems = [
             </template>
         </v-navigation-drawer>
 
-        <v-navigation-drawer v-if="isMobile" v-model="mobileDrawer" temporary>
+        <v-navigation-drawer v-if="mobile" v-model="mobileDrawer" temporary>
             <v-list density="compact" nav>
                 <v-list-item
                     v-for="item in navItems"

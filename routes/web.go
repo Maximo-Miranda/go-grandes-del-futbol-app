@@ -38,8 +38,18 @@ func Web() {
 			router.Post("/logout", authController.Logout)
 		})
 
-		// Authenticated routes
+		// Profile management (authenticated but no profile required for create)
+		profileController := controllers.NewProfileController()
 		router.Middleware(middleware.Authenticate()).Group(func(router route.Router) {
+			router.Get("/profile/create", profileController.Create)
+			router.Post("/profile", profileController.Store)
+			router.Get("/profile/edit", profileController.Edit)
+			router.Put("/profile", profileController.Update)
+			router.Post("/profile/update", profileController.Update) // Method spoofing for file uploads
+		})
+
+		// Authenticated routes (require profile)
+		router.Middleware(middleware.Authenticate(), middleware.RequireProfile()).Group(func(router route.Router) {
 			// Dashboard
 			dashboardController := controllers.NewDashboardController()
 			router.Get("/dashboard", dashboardController.Index)
@@ -83,17 +93,11 @@ func Web() {
 			router.Delete("/teams/{id}/players/{playerId}", teamController.RemovePlayer)
 			router.Get("/teams/{id}/available-players", teamController.AvailablePlayers)
 
-			// Players
+			// Players (read-only)
 			playerController := controllers.NewPlayerController()
 			router.Get("/players", playerController.Index)
-			router.Get("/players/create", playerController.Create)
-			router.Post("/players", playerController.Store)
 			router.Get("/players/{id}", playerController.Show)
-			router.Get("/players/{id}/edit", playerController.Edit)
-			router.Put("/players/{id}", playerController.Update)
-			router.Post("/players/{id}", playerController.Update) // For method spoofing with file uploads
-			router.Delete("/players/{id}", playerController.Destroy)
-			router.Get("/players/photo/{filename}", playerController.Photo)
+			router.Get("/players/{id}/photo", playerController.Photo)
 
 			// Matches
 			matchController := controllers.NewMatchController()

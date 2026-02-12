@@ -53,7 +53,7 @@ func (c *TeamController) Show(ctx http.Context) http.Response {
 	}
 
 	var teamPlayers []models.TeamPlayer
-	facades.Orm().Query().With("Player").Where("team_id = ?", id).Find(&teamPlayers)
+	facades.Orm().Query().With("Player.User").Where("team_id = ?", id).Find(&teamPlayers)
 
 	return c.inertia.Render(ctx, "teams/Show", map[string]any{
 		"team":    team,
@@ -150,9 +150,9 @@ func (c *TeamController) AvailablePlayers(ctx http.Context) http.Response {
 	// Get players not in the list
 	var players []models.Player
 	if len(existingPlayerIDs) > 0 {
-		facades.Orm().Query().WhereNotIn("id", existingPlayerIDs).Find(&players)
+		facades.Orm().Query().With("User").WhereNotIn("id", existingPlayerIDs).Find(&players)
 	} else {
-		facades.Orm().Query().Find(&players)
+		facades.Orm().Query().With("User").Find(&players)
 	}
 
 	return ctx.Response().Json(http.StatusOK, http.Json{"players": players})

@@ -1,18 +1,12 @@
 package controllers
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/goravel/framework/contracts/filesystem"
 	"github.com/goravel/framework/contracts/http"
 	"github.com/goravel/framework/facades"
-	"github.com/goravel/framework/support/path"
 
-	"grandesdelfutbol/app/http/requests/player"
 	"grandesdelfutbol/app/inertia"
 	"grandesdelfutbol/app/models"
 )
@@ -27,63 +21,25 @@ func NewPlayerController() *PlayerController {
 
 func (c *PlayerController) Index(ctx http.Context) http.Response {
 	var players []models.Player
-	facades.Orm().Query().Order("name ASC").Find(&players)
+	facades.Orm().Query().With("User").Order("nickname ASC").Find(&players)
+
+	for i := range players {
+		players[i].SetPhotoURL()
+	}
 
 	return c.inertia.Render(ctx, "players/Index", map[string]any{
 		"players": players,
 	})
 }
 
-func (c *PlayerController) Create(ctx http.Context) http.Response {
-	return c.inertia.Render(ctx, "players/Create", map[string]any{})
-}
-
-func (c *PlayerController) Store(ctx http.Context) http.Response {
-	var request player.StorePlayerRequest
-	errors, err := ctx.Request().ValidateRequest(&request)
-	if err != nil {
-		return c.inertia.Render(ctx, "players/Create", map[string]any{
-			"errors": map[string]string{"name": "Error de validación"},
-		})
-	}
-
-	if errors != nil {
-		return c.inertia.Render(ctx, "players/Create", map[string]any{
-			"errors": inertia.ValidationErrors(errors.All()),
-		})
-	}
-
-	newPlayer := models.Player{
-		Name:       request.Name,
-		Nickname:   request.Nickname,
-		DocumentID: request.DocumentID,
-		Phone:      request.Phone,
-		Position:   request.Position,
-	}
-
-	// Handle photo upload
-	if file, err := ctx.Request().File("photo"); err == nil && file != nil {
-		photoPath, uploadErr := c.handlePhotoUpload(file)
-		if uploadErr == nil {
-			newPlayer.Photo = photoPath
-		}
-	}
-
-	if err := facades.Orm().Query().Create(&newPlayer); err != nil {
-		return c.inertia.Render(ctx, "players/Create", map[string]any{
-			"errors": map[string]string{"name": "Error al crear el jugador"},
-		})
-	}
-
-	return ctx.Response().Redirect(http.StatusSeeOther, "/players")
-}
-
 func (c *PlayerController) Show(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var playerModel models.Player
-	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
+	if err := facades.Orm().Query().With("User").Find(&playerModel, id); err != nil {
 		return ctx.Response().Redirect(http.StatusSeeOther, "/players")
 	}
+
+	playerModel.SetPhotoURL()
 
 	// Get player stats from match_events
 	goals, _ := facades.Orm().Query().Model(&models.MatchEvent{}).Where("player_id = ? AND event_type = ?", id, "goal").Count()
@@ -109,7 +65,6 @@ func (c *PlayerController) Show(ctx http.Context) http.Response {
 			continue
 		}
 
-		// Get events for this player in this match
 		matchGoals, _ := facades.Orm().Query().Model(&models.MatchEvent{}).
 			Where("match_id = ? AND player_id = ? AND event_type = ?", lineup.MatchID, id, "goal").
 			Count()
@@ -130,7 +85,6 @@ func (c *PlayerController) Show(ctx http.Context) http.Response {
 			matchCard = "yellow"
 		}
 
-		// Determine opponent and result
 		var opponent string
 		var result string
 		isHome := lineup.TeamID == lineup.Match.HomeTeamID
@@ -191,122 +145,29 @@ func (c *PlayerController) Show(ctx http.Context) http.Response {
 	})
 }
 
-func (c *PlayerController) Edit(ctx http.Context) http.Response {
-	id := ctx.Request().Route("id")
-	var playerModel models.Player
-	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
-		return ctx.Response().Redirect(http.StatusSeeOther, "/players")
-	}
-
-	return c.inertia.Render(ctx, "players/Edit", map[string]any{
-		"player": playerModel,
-	})
-}
-
-func (c *PlayerController) Update(ctx http.Context) http.Response {
-	id := ctx.Request().Route("id")
-	var playerModel models.Player
-	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
-		return ctx.Response().Redirect(http.StatusSeeOther, "/players")
-	}
-
-	var request player.UpdatePlayerRequest
-	errors, err := ctx.Request().ValidateRequest(&request)
-	if err != nil {
-		return c.inertia.Render(ctx, "players/Edit", map[string]any{
-			"player": playerModel,
-			"errors": map[string]string{"name": "Error de validación"},
-		})
-	}
-
-	if errors != nil {
-		return c.inertia.Render(ctx, "players/Edit", map[string]any{
-			"player": playerModel,
-			"errors": inertia.ValidationErrors(errors.All()),
-		})
-	}
-
-	playerModel.Name = request.Name
-	playerModel.Nickname = request.Nickname
-	playerModel.DocumentID = request.DocumentID
-	playerModel.Phone = request.Phone
-	playerModel.Position = request.Position
-
-	// Handle photo upload
-	if file, err := ctx.Request().File("photo"); err == nil && file != nil {
-		// Delete old photo if exists
-		if playerModel.Photo != "" {
-			oldPath := path.Storage("app/public/" + playerModel.Photo)
-			os.Remove(oldPath)
-		}
-
-		photoPath, uploadErr := c.handlePhotoUpload(file)
-		if uploadErr == nil {
-			playerModel.Photo = photoPath
-		}
-	}
-
-	// Handle photo removal
-	if request.RemovePhoto == "true" && playerModel.Photo != "" {
-		oldPath := path.Storage("app/public/" + playerModel.Photo)
-		os.Remove(oldPath)
-		playerModel.Photo = ""
-	}
-
-	facades.Orm().Query().Save(&playerModel)
-	return ctx.Response().Redirect(http.StatusSeeOther, "/players/"+id)
-}
-
-func (c *PlayerController) Destroy(ctx http.Context) http.Response {
-	id := ctx.Request().Route("id")
-	var playerModel models.Player
-	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
-		return ctx.Response().Redirect(http.StatusSeeOther, "/players")
-	}
-
-	// Delete photo file if exists
-	if playerModel.Photo != "" {
-		photoPath := path.Storage("app/public/" + playerModel.Photo)
-		os.Remove(photoPath)
-	}
-
-	facades.Orm().Query().Delete(&playerModel)
-	return ctx.Response().Redirect(http.StatusSeeOther, "/players")
-}
-
 // Photo serves player photos only to authenticated users
 func (c *PlayerController) Photo(ctx http.Context) http.Response {
-	filename := ctx.Request().Route("filename")
-	photoPath := path.Storage("app/public/players/" + filename)
-
-	// Check if file exists
-	if _, err := os.Stat(photoPath); os.IsNotExist(err) {
+	id := ctx.Request().Route("id")
+	var playerModel models.Player
+	if err := facades.Orm().Query().Find(&playerModel, id); err != nil || playerModel.Photo == "" {
 		return ctx.Response().Status(http.StatusNotFound).String("Not found")
 	}
 
-	// Serve file
-	return ctx.Response().File(photoPath)
-}
-
-func (c *PlayerController) handlePhotoUpload(file filesystem.File) (string, error) {
-	// Validate file type
-	ext := strings.ToLower(filepath.Ext(file.GetClientOriginalName()))
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
-		return "", fmt.Errorf("invalid file type")
+	data, err := facades.Storage().Disk("minio").GetBytes(playerModel.Photo)
+	if err != nil {
+		return ctx.Response().Status(http.StatusNotFound).String("Not found")
 	}
 
-	// Generate unique filename
-	filename := fmt.Sprintf("player_%d%s", time.Now().UnixNano(), ext)
-
-	// Ensure directory exists (absolute path for mkdir)
-	uploadDir := path.Storage("app/public/players")
-	os.MkdirAll(uploadDir, 0755)
-
-	// Save file using relative path to disk root (storage/app/)
-	// StoreAs expects path relative to the disk's root, not absolute
-	if _, err := file.StoreAs("public/players", filename); err != nil {
-		return "", err
+	contentType := "application/octet-stream"
+	ext := strings.ToLower(filepath.Ext(playerModel.Photo))
+	switch ext {
+	case ".jpg", ".jpeg":
+		contentType = "image/jpeg"
+	case ".png":
+		contentType = "image/png"
+	case ".webp":
+		contentType = "image/webp"
 	}
 
-	return "players/" + filename, nil
+	return ctx.Response().Header("Content-Type", contentType).Data(http.StatusOK, contentType, data)
 }

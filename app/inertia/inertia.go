@@ -73,18 +73,60 @@ func (i *Inertia) mergeProps(props map[string]any) map[string]any {
 	return merged
 }
 
+// Flash sets a flash message cookie that will be read on the next Inertia render.
+func Flash(ctx http.Context, kind string, message string) {
+	ctx.Response().Cookie(http.Cookie{
+		Name:     "flash_" + kind,
+		Value:    message,
+		MaxAge:   5,
+		Path:     "/",
+		HttpOnly: true,
+	})
+}
+
 func (i *Inertia) Render(ctx http.Context, component string, props map[string]any) http.Response {
 	merged := i.mergeProps(props)
 
+	// Read and clear flash cookies
+	flash := make(map[string]string)
+	for _, kind := range []string{"success", "error", "warning"} {
+		if msg := ctx.Request().Cookie("flash_" + kind); msg != "" {
+			flash[kind] = msg
+			ctx.Response().Cookie(http.Cookie{
+				Name:     "flash_" + kind,
+				Value:    "",
+				MaxAge:   -1,
+				Path:     "/",
+				HttpOnly: true,
+			})
+		}
+	}
+	if len(flash) > 0 {
+		merged["flash"] = flash
+	}
+
 	if user, ok := ctx.Value("user").(*models.User); ok && user != nil {
-		merged["auth"] = map[string]any{
+		authData := map[string]any{
 			"user": map[string]any{
 				"id":    user.ID,
 				"email": user.Email,
 				"name":  user.Name,
 				"role":  user.Role,
 			},
+			"hasProfile": false,
 		}
+
+		if player, ok := ctx.Value("player").(*models.Player); ok && player != nil {
+			authData["hasProfile"] = true
+			authData["player"] = map[string]any{
+				"id":       player.ID,
+				"nickname": player.Nickname,
+				"position": player.Position,
+				"photo":    player.Photo,
+			}
+		}
+
+		merged["auth"] = authData
 	}
 
 	pageData := page{
