@@ -42,14 +42,14 @@ func (c *TeamController) Store(ctx http.Context) http.Response {
 		})
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/teams")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/teams")
 }
 
 func (c *TeamController) Show(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var team models.Team
 	if err := facades.Orm().Query().Find(&team, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/teams")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/teams")
 	}
 
 	var teamPlayers []models.TeamPlayer
@@ -65,7 +65,7 @@ func (c *TeamController) Edit(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var team models.Team
 	if err := facades.Orm().Query().Find(&team, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/teams")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/teams")
 	}
 
 	return c.inertia.Render(ctx, "teams/Edit", map[string]any{
@@ -77,7 +77,7 @@ func (c *TeamController) Update(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var team models.Team
 	if err := facades.Orm().Query().Find(&team, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/teams")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/teams")
 	}
 
 	team.Name = ctx.Request().Input("name", team.Name)
@@ -85,17 +85,17 @@ func (c *TeamController) Update(ctx http.Context) http.Response {
 	team.ContactPhone = ctx.Request().Input("contact_phone", team.ContactPhone)
 
 	facades.Orm().Query().Save(&team)
-	return ctx.Response().Redirect(http.StatusFound, "/teams/"+id)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/teams/"+id)
 }
 
 func (c *TeamController) Destroy(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var team models.Team
 	if err := facades.Orm().Query().Find(&team, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/teams")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/teams")
 	}
 	facades.Orm().Query().Delete(&team)
-	return ctx.Response().Redirect(http.StatusFound, "/teams")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/teams")
 }
 
 func (c *TeamController) AddPlayer(ctx http.Context) http.Response {
@@ -123,7 +123,7 @@ func (c *TeamController) AddPlayer(ctx http.Context) http.Response {
 		return ctx.Response().Json(http.StatusBadRequest, http.Json{"error": "Error al agregar jugador"})
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/teams/"+teamID)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/teams/"+teamID)
 }
 
 func (c *TeamController) RemovePlayer(ctx http.Context) http.Response {
@@ -132,7 +132,7 @@ func (c *TeamController) RemovePlayer(ctx http.Context) http.Response {
 
 	facades.Orm().Query().Where("team_id = ? AND player_id = ?", teamID, playerID).Delete(&models.TeamPlayer{})
 
-	return ctx.Response().Redirect(http.StatusFound, "/teams/"+teamID)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/teams/"+teamID)
 }
 
 func (c *TeamController) AvailablePlayers(ctx http.Context) http.Response {

@@ -28,6 +28,7 @@ func (kernel Kernel) Migrations() []schema.Migration {
 		&migrations.M20260211000001ModifyVenuesAddPhotoRemoveFields{},
 		&migrations.M20260211000002CreatePitchesTable{},
 		&migrations.M20260212000001AddUuidToVenues{},
+		&migrations.M20260212000002MakeTournamentsFieldsRequired{},
 	}
 }
 

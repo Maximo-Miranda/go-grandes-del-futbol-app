@@ -76,14 +76,14 @@ func (c *VenueController) Store(ctx http.Context) http.Response {
 		}
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/venues")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/venues")
 }
 
 func (c *VenueController) Edit(ctx http.Context) http.Response {
 	venueUUID := ctx.Request().Route("uuid")
 	var venueModel models.Venue
 	if err := facades.Orm().Query().Where("uuid", venueUUID).First(&venueModel); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/venues")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/venues")
 	}
 
 	venueModel.SetPhotoURL()
@@ -97,7 +97,7 @@ func (c *VenueController) Update(ctx http.Context) http.Response {
 	venueUUID := ctx.Request().Route("uuid")
 	var venueModel models.Venue
 	if err := facades.Orm().Query().Where("uuid", venueUUID).First(&venueModel); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/venues")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/venues")
 	}
 
 	var request venue.UpdateVenueRequest
@@ -143,7 +143,7 @@ func (c *VenueController) Destroy(ctx http.Context) http.Response {
 	venueUUID := ctx.Request().Route("uuid")
 	var venueModel models.Venue
 	if err := facades.Orm().Query().Where("uuid", venueUUID).First(&venueModel); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/venues")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/venues")
 	}
 
 	if venueModel.Photo != "" {

@@ -7,6 +7,7 @@ import (
 	"github.com/goravel/framework/contracts/http"
 	"github.com/goravel/framework/facades"
 
+	"grandesdelfutbol/app/http/requests/tournament"
 	"grandesdelfutbol/app/inertia"
 	"grandesdelfutbol/app/models"
 )
@@ -41,74 +42,54 @@ func (c *TournamentController) Store(ctx http.Context) http.Response {
 	var venues []models.Venue
 	facades.Orm().Query().Find(&venues)
 
-	// Validation
-	errors := make(map[string]string)
-	name := ctx.Request().Input("name")
-	format := ctx.Request().Input("format")
-	gameType := ctx.Request().Input("game_type")
-
-	if name == "" {
-		errors["name"] = "El nombre del torneo es obligatorio"
-	}
-	if format == "" {
-		errors["format"] = "El formato es obligatorio"
-	}
-	if gameType == "" {
-		errors["game_type"] = "El tipo de juego es obligatorio"
-	}
-
-	if len(errors) > 0 {
+	var request tournament.StoreTournamentRequest
+	validationErrors, err := ctx.Request().ValidateRequest(&request)
+	if err != nil {
 		return c.inertia.Render(ctx, "tournaments/Create", map[string]any{
 			"venues": venues,
-			"errors": errors,
+			"errors": map[string]string{"name": "Error de validación"},
 		})
 	}
 
-	tournament := models.Tournament{
-		Name:        name,
-		Description: ctx.Request().Input("description"),
-		Format:      format,
-		GameType:    gameType,
+	if validationErrors != nil {
+		return c.inertia.Render(ctx, "tournaments/Create", map[string]any{
+			"venues": venues,
+			"errors": inertia.ValidationErrors(validationErrors.All()),
+		})
+	}
+
+	startDate, _ := time.Parse("2006-01-02", request.StartDate)
+	endDate, _ := time.Parse("2006-01-02", request.EndDate)
+
+	var venueID uint
+	fmt.Sscanf(request.VenueID, "%d", &venueID)
+
+	newTournament := models.Tournament{
+		Name:        request.Name,
+		Description: request.Description,
+		Format:      request.Format,
+		GameType:    request.GameType,
 		Status:      "draft",
+		StartDate:   startDate,
+		EndDate:     endDate,
+		VenueID:     venueID,
 	}
 
-	// Handle venue_id
-	if venueID := ctx.Request().Input("venue_id"); venueID != "" {
-		var id uint
-		if _, err := fmt.Sscanf(venueID, "%d", &id); err == nil && id > 0 {
-			tournament.VenueID = &id
-		}
-	}
-
-	// Handle start_date
-	if startDate := ctx.Request().Input("start_date"); startDate != "" {
-		if t, err := time.Parse("2006-01-02", startDate); err == nil {
-			tournament.StartDate = &t
-		}
-	}
-
-	// Handle end_date
-	if endDate := ctx.Request().Input("end_date"); endDate != "" {
-		if t, err := time.Parse("2006-01-02", endDate); err == nil {
-			tournament.EndDate = &t
-		}
-	}
-
-	if err := facades.Orm().Query().Create(&tournament); err != nil {
+	if err := facades.Orm().Query().Create(&newTournament); err != nil {
 		return c.inertia.Render(ctx, "tournaments/Create", map[string]any{
 			"venues": venues,
 			"errors": map[string]string{"name": "Error al crear el torneo"},
 		})
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/tournaments")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments")
 }
 
 func (c *TournamentController) Show(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var tournament models.Tournament
-	if err := facades.Orm().Query().With("Venue").With("Groups").Find(&tournament, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/tournaments")
+	var tournamentModel models.Tournament
+	if err := facades.Orm().Query().With("Venue").With("Groups").Find(&tournamentModel, id); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments")
 	}
 
 	var teams []models.TournamentTeam
@@ -121,7 +102,7 @@ func (c *TournamentController) Show(ctx http.Context) http.Response {
 	facades.Orm().Query().With("Team").With("Group").Where("tournament_id = ?", id).Order("points DESC, goal_difference DESC").Find(&standings)
 
 	return c.inertia.Render(ctx, "tournaments/Show", map[string]any{
-		"tournament": tournament,
+		"tournament": tournamentModel,
 		"teams":      teams,
 		"matches":    matches,
 		"standings":  standings,
@@ -130,94 +111,95 @@ func (c *TournamentController) Show(ctx http.Context) http.Response {
 
 func (c *TournamentController) Edit(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var tournament models.Tournament
-	if err := facades.Orm().Query().Find(&tournament, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/tournaments")
+	var tournamentModel models.Tournament
+	if err := facades.Orm().Query().Find(&tournamentModel, id); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments")
 	}
 
 	var venues []models.Venue
 	facades.Orm().Query().Find(&venues)
 
 	return c.inertia.Render(ctx, "tournaments/Edit", map[string]any{
-		"tournament": tournament,
+		"tournament": tournamentModel,
 		"venues":     venues,
 	})
 }
 
 func (c *TournamentController) Update(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var tournament models.Tournament
-	if err := facades.Orm().Query().Find(&tournament, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/tournaments")
+	var tournamentModel models.Tournament
+	if err := facades.Orm().Query().Find(&tournamentModel, id); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments")
 	}
 
-	tournament.Name = ctx.Request().Input("name", tournament.Name)
-	tournament.Description = ctx.Request().Input("description", tournament.Description)
-	tournament.Format = ctx.Request().Input("format", tournament.Format)
-	tournament.GameType = ctx.Request().Input("game_type", tournament.GameType)
+	var venues []models.Venue
+	facades.Orm().Query().Find(&venues)
 
-	// Handle venue_id
-	if venueID := ctx.Request().Input("venue_id"); venueID != "" {
-		var vID uint
-		if _, err := fmt.Sscanf(venueID, "%d", &vID); err == nil && vID > 0 {
-			tournament.VenueID = &vID
-		}
-	} else {
-		tournament.VenueID = nil
+	var request tournament.UpdateTournamentRequest
+	validationErrors, err := ctx.Request().ValidateRequest(&request)
+	if err != nil {
+		return c.inertia.Render(ctx, "tournaments/Edit", map[string]any{
+			"tournament": tournamentModel,
+			"venues":     venues,
+			"errors":     map[string]string{"name": "Error de validación"},
+		})
 	}
 
-	// Handle start_date
-	if startDate := ctx.Request().Input("start_date"); startDate != "" {
-		if t, err := time.Parse("2006-01-02", startDate); err == nil {
-			tournament.StartDate = &t
-		}
-	} else {
-		tournament.StartDate = nil
+	if validationErrors != nil {
+		return c.inertia.Render(ctx, "tournaments/Edit", map[string]any{
+			"tournament": tournamentModel,
+			"venues":     venues,
+			"errors":     inertia.ValidationErrors(validationErrors.All()),
+		})
 	}
 
-	// Handle end_date
-	if endDate := ctx.Request().Input("end_date"); endDate != "" {
-		if t, err := time.Parse("2006-01-02", endDate); err == nil {
-			tournament.EndDate = &t
-		}
-	} else {
-		tournament.EndDate = nil
-	}
+	tournamentModel.Name = request.Name
+	tournamentModel.Description = request.Description
+	tournamentModel.Format = request.Format
+	tournamentModel.GameType = request.GameType
 
-	facades.Orm().Query().Save(&tournament)
+	startDate, _ := time.Parse("2006-01-02", request.StartDate)
+	endDate, _ := time.Parse("2006-01-02", request.EndDate)
+	tournamentModel.StartDate = startDate
+	tournamentModel.EndDate = endDate
 
-	return ctx.Response().Redirect(http.StatusFound, "/tournaments/"+id)
+	var venueID uint
+	fmt.Sscanf(request.VenueID, "%d", &venueID)
+	tournamentModel.VenueID = venueID
+
+	facades.Orm().Query().Save(&tournamentModel)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+id)
 }
 
 func (c *TournamentController) Destroy(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var tournament models.Tournament
-	if err := facades.Orm().Query().Find(&tournament, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/tournaments")
+	var tournamentModel models.Tournament
+	if err := facades.Orm().Query().Find(&tournamentModel, id); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments")
 	}
-	facades.Orm().Query().Delete(&tournament)
-	return ctx.Response().Redirect(http.StatusFound, "/tournaments")
+	facades.Orm().Query().Delete(&tournamentModel)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments")
 }
 
 func (c *TournamentController) UpdateStatus(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
-	var tournament models.Tournament
-	if err := facades.Orm().Query().Find(&tournament, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/tournaments")
+	var tournamentModel models.Tournament
+	if err := facades.Orm().Query().Find(&tournamentModel, id); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments")
 	}
 
-	tournament.Status = ctx.Request().Input("status", tournament.Status)
-	facades.Orm().Query().Save(&tournament)
+	tournamentModel.Status = ctx.Request().Input("status", tournamentModel.Status)
+	facades.Orm().Query().Save(&tournamentModel)
 
-	return ctx.Response().Redirect(http.StatusFound, "/tournaments/"+id)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+id)
 }
 
 func (c *TournamentController) AddTeam(ctx http.Context) http.Response {
 	tournamentID := ctx.Request().Route("id")
 	teamID := ctx.Request().Input("team_id")
 
-	var tournament models.Tournament
-	if err := facades.Orm().Query().Find(&tournament, tournamentID); err != nil {
+	var tournamentModel models.Tournament
+	if err := facades.Orm().Query().Find(&tournamentModel, tournamentID); err != nil {
 		return ctx.Response().Json(http.StatusNotFound, http.Json{"error": "Torneo no encontrado"})
 	}
 
@@ -225,7 +207,7 @@ func (c *TournamentController) AddTeam(ctx http.Context) http.Response {
 	fmt.Sscanf(teamID, "%d", &teamIDUint)
 
 	tournamentTeam := models.TournamentTeam{
-		TournamentID: tournament.ID,
+		TournamentID: tournamentModel.ID,
 		TeamID:       teamIDUint,
 	}
 
@@ -233,7 +215,7 @@ func (c *TournamentController) AddTeam(ctx http.Context) http.Response {
 		return ctx.Response().Json(http.StatusBadRequest, http.Json{"error": "Error al agregar equipo"})
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/tournaments/"+tournamentID)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
 }
 
 func (c *TournamentController) RemoveTeam(ctx http.Context) http.Response {
@@ -242,13 +224,12 @@ func (c *TournamentController) RemoveTeam(ctx http.Context) http.Response {
 
 	facades.Orm().Query().Where("tournament_id = ? AND team_id = ?", tournamentID, teamID).Delete(&models.TournamentTeam{})
 
-	return ctx.Response().Redirect(http.StatusFound, "/tournaments/"+tournamentID)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
 }
 
 func (c *TournamentController) AvailableTeams(ctx http.Context) http.Response {
 	tournamentID := ctx.Request().Route("id")
 
-	// Get team IDs already in this tournament
 	var tournamentTeams []models.TournamentTeam
 	facades.Orm().Query().Where("tournament_id = ?", tournamentID).Find(&tournamentTeams)
 
@@ -257,7 +238,6 @@ func (c *TournamentController) AvailableTeams(ctx http.Context) http.Response {
 		existingTeamIDs = append(existingTeamIDs, tt.TeamID)
 	}
 
-	// Get teams not in the list
 	var teams []models.Team
 	if len(existingTeamIDs) > 0 {
 		facades.Orm().Query().WhereNotIn("id", existingTeamIDs).Find(&teams)

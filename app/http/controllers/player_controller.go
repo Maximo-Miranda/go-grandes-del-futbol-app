@@ -75,14 +75,14 @@ func (c *PlayerController) Store(ctx http.Context) http.Response {
 		})
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/players")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/players")
 }
 
 func (c *PlayerController) Show(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var playerModel models.Player
 	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/players")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/players")
 	}
 
 	// Get player stats from match_events
@@ -195,7 +195,7 @@ func (c *PlayerController) Edit(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var playerModel models.Player
 	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/players")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/players")
 	}
 
 	return c.inertia.Render(ctx, "players/Edit", map[string]any{
@@ -207,7 +207,7 @@ func (c *PlayerController) Update(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var playerModel models.Player
 	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/players")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/players")
 	}
 
 	var request player.UpdatePlayerRequest
@@ -254,14 +254,14 @@ func (c *PlayerController) Update(ctx http.Context) http.Response {
 	}
 
 	facades.Orm().Query().Save(&playerModel)
-	return ctx.Response().Redirect(http.StatusFound, "/players/"+id)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/players/"+id)
 }
 
 func (c *PlayerController) Destroy(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var playerModel models.Player
 	if err := facades.Orm().Query().Find(&playerModel, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/players")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/players")
 	}
 
 	// Delete photo file if exists
@@ -271,7 +271,7 @@ func (c *PlayerController) Destroy(ctx http.Context) http.Response {
 	}
 
 	facades.Orm().Query().Delete(&playerModel)
-	return ctx.Response().Redirect(http.StatusFound, "/players")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/players")
 }
 
 // Photo serves player photos only to authenticated users

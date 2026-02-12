@@ -49,7 +49,7 @@ func (c *AuthController) Login(ctx http.Context) http.Response {
 
 	middleware.SetAuthCookie(ctx, result.Token)
 
-	return ctx.Response().Redirect(http.StatusFound, "/dashboard")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/dashboard")
 }
 
 func (c *AuthController) ShowRegister(ctx http.Context) http.Response {
@@ -96,5 +96,5 @@ func (c *AuthController) Logout(ctx http.Context) http.Response {
 		HttpOnly: true,
 	})
 
-	return ctx.Response().Redirect(http.StatusFound, "/auth/login")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/auth/login")
 }

@@ -142,14 +142,14 @@ func (c *MatchController) Store(ctx http.Context) http.Response {
 		})
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/matches")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 }
 
 func (c *MatchController) Edit(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
 	var tournaments []models.Tournament
@@ -171,7 +171,7 @@ func (c *MatchController) Update(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
 	// Parse IDs
@@ -206,17 +206,17 @@ func (c *MatchController) Update(ctx http.Context) http.Response {
 	}
 
 	facades.Orm().Query().Save(&match)
-	return ctx.Response().Redirect(http.StatusFound, "/matches/"+id)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+id)
 }
 
 func (c *MatchController) Destroy(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 	facades.Orm().Query().Delete(&match)
-	return ctx.Response().Redirect(http.StatusFound, "/matches")
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 }
 
 func (c *MatchController) Show(ctx http.Context) http.Response {
@@ -225,7 +225,7 @@ func (c *MatchController) Show(ctx http.Context) http.Response {
 	if err := facades.Orm().Query().
 		With("HomeTeam").With("AwayTeam").With("Tournament").With("Venue").
 		Find(&match, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
 	// Get events with player info
@@ -277,7 +277,7 @@ func (c *MatchController) RecordResult(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
 	homeScore, _ := strconv.Atoi(ctx.Request().Input("home_score", "0"))
@@ -292,7 +292,7 @@ func (c *MatchController) RecordResult(ctx http.Context) http.Response {
 	// Update standings
 	c.updateStandings(&match)
 
-	return ctx.Response().Redirect(http.StatusFound, "/matches/"+id)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+id)
 }
 
 // CloseMatch marks a match as finished without changing the score
@@ -300,7 +300,7 @@ func (c *MatchController) CloseMatch(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, id); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
 	match.Status = "completed"
@@ -309,7 +309,7 @@ func (c *MatchController) CloseMatch(ctx http.Context) http.Response {
 	// Update standings if not already done
 	c.updateStandings(&match)
 
-	return ctx.Response().Redirect(http.StatusFound, "/matches/"+id)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+id)
 }
 
 // AddEvent adds a match event (goal, assist, card, etc.)
@@ -317,7 +317,7 @@ func (c *MatchController) AddEvent(ctx http.Context) http.Response {
 	matchID := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
 	playerID, _ := strconv.ParseUint(ctx.Request().Input("player_id"), 10, 64)
@@ -326,7 +326,7 @@ func (c *MatchController) AddEvent(ctx http.Context) http.Response {
 	eventType := ctx.Request().Input("event_type")
 
 	if playerID == 0 || teamID == 0 || eventType == "" {
-		return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 	}
 
 	event := models.MatchEvent{
@@ -349,7 +349,7 @@ func (c *MatchController) AddEvent(ctx http.Context) http.Response {
 		facades.Orm().Query().Save(&match)
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 }
 
 // DeleteEvent removes a match event
@@ -359,12 +359,12 @@ func (c *MatchController) DeleteEvent(ctx http.Context) http.Response {
 
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
 	var event models.MatchEvent
 	if err := facades.Orm().Query().Where("id = ? AND match_id = ?", eventID, matchID).Find(&event); err != nil || event.ID == 0 {
-		return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 	}
 
 	// If it's a goal, decrement the score
@@ -383,7 +383,7 @@ func (c *MatchController) DeleteEvent(ctx http.Context) http.Response {
 
 	facades.Orm().Query().Delete(&event)
 
-	return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 }
 
 // AddLineup adds a player to the match lineup
@@ -391,7 +391,7 @@ func (c *MatchController) AddLineup(ctx http.Context) http.Response {
 	matchID := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
-		return ctx.Response().Redirect(http.StatusFound, "/matches")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
 	playerID, _ := strconv.ParseUint(ctx.Request().Input("player_id"), 10, 64)
@@ -400,7 +400,7 @@ func (c *MatchController) AddLineup(ctx http.Context) http.Response {
 	isStarter := ctx.Request().Input("is_starter") == "true"
 
 	if playerID == 0 || teamID == 0 {
-		return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 	}
 
 	// Check if player is already in lineup
@@ -423,7 +423,7 @@ func (c *MatchController) AddLineup(ctx http.Context) http.Response {
 		facades.Orm().Query().Create(&lineup)
 	}
 
-	return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 }
 
 // RemoveLineup removes a player from the match lineup
@@ -433,7 +433,7 @@ func (c *MatchController) RemoveLineup(ctx http.Context) http.Response {
 
 	facades.Orm().Query().Where("match_id = ? AND player_id = ?", matchID, playerID).Delete(&models.MatchLineup{})
 
-	return ctx.Response().Redirect(http.StatusFound, "/matches/"+matchID)
+	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 }
 
 func (c *MatchController) updateStandings(match *models.Match) {
