@@ -2,8 +2,8 @@ package auth
 
 import (
 	"github.com/goravel/framework/contracts/http"
-	"github.com/goravel/framework/facades"
 
+	"grandesdelfutbol/app/http/middleware"
 	"grandesdelfutbol/app/http/requests/auth"
 	"grandesdelfutbol/app/inertia"
 	"grandesdelfutbol/app/models"
@@ -47,15 +47,7 @@ func (c *AuthController) Login(ctx http.Context) http.Response {
 		})
 	}
 
-	ctx.Response().Cookie(http.Cookie{
-		Name:     "token",
-		Value:    result.Token,
-		MaxAge:   60 * 60 * 12,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   facades.Config().GetString("app.env") != "local",
-		SameSite: "Lax",
-	})
+	middleware.SetAuthCookie(ctx, result.Token)
 
 	return ctx.Response().Redirect(http.StatusFound, "/dashboard")
 }

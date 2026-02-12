@@ -9,9 +9,22 @@ import AuthLayout from "./layouts/AuthLayout.vue";
 const toast = useToast();
 
 router.on("invalid", (event) => {
+  const response = event.detail.response;
+
+  // 409 + X-Inertia-Location is handled natively by Inertia (window.location redirect).
+  // Do not interfere — let Inertia process it.
+  if (response.status === 409 && response.headers?.["x-inertia-location"]) {
+    return;
+  }
+
   event.preventDefault();
 
-  const response = event.detail.response;
+  // Auth failure outside the normal 409 path — force full page redirect to login
+  if (response.status === 401 || response.status === 403) {
+    window.location.href = "/auth/login";
+    return;
+  }
+
   if (response.status === 429) {
     toast.warning("Demasiados intentos. Espera un momento.");
   } else if (response.status >= 500) {

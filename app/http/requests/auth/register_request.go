@@ -20,7 +20,7 @@ func (r *RegisterRequest) Rules(_ http.Context) map[string]string {
 	return map[string]string{
 		"name":     "required|min_len:2",
 		"email":    "required|email",
-		"password": "required|min_len:6",
+		"password": "required|min_len:8",
 	}
 }
 
@@ -31,7 +31,7 @@ func (r *RegisterRequest) Messages(_ http.Context) map[string]string {
 		"email.required":    "El correo electrónico es obligatorio",
 		"email.email":       "Ingresa un correo electrónico válido",
 		"password.required": "La contraseña es obligatoria",
-		"password.min_len":  "La contraseña debe tener al menos 6 caracteres",
+		"password.min_len":  "La contraseña debe tener al menos 8 caracteres",
 	}
 }
 

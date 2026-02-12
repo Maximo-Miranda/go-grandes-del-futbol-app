@@ -21,8 +21,14 @@ func (s *AuthService) Login(ctx http.Context, email, password, ip string) LoginR
 		return LoginResult{Success: false, Error: "Credenciales inválidas"}
 	}
 
+	// Auto-unlock if lockout period has expired
+	if user.LockedAt != nil && !user.IsLocked() {
+		user.Unlock()
+		facades.Orm().Query().Save(&user)
+	}
+
 	if user.IsLocked() {
-		return LoginResult{Success: false, Error: "Tu cuenta está bloqueada. Contacta al administrador."}
+		return LoginResult{Success: false, Error: "Tu cuenta está bloqueada temporalmente. Intenta de nuevo en 30 minutos."}
 	}
 
 	if !facades.Hash().Check(password, user.Password) {
@@ -49,7 +55,8 @@ func (s *AuthService) Login(ctx http.Context, email, password, ip string) LoginR
 func (s *AuthService) Register(name, email, password string) RegisterResult {
 	count, _ := facades.Orm().Query().Model(&models.User{}).Where("email = ?", strings.ToLower(email)).Count()
 	if count > 0 {
-		return RegisterResult{Success: false, Error: "Este correo electrónico ya está registrado"}
+		// Return success to prevent user enumeration — same message regardless
+		return RegisterResult{Success: true, User: nil}
 	}
 
 	hashedPassword, err := facades.Hash().Make(password)

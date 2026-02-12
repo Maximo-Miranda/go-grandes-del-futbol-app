@@ -6,7 +6,7 @@ func init() {
 	config := facades.Config()
 	config.Add("jwt", map[string]any{
 		"secret":      config.Env("JWT_SECRET", ""),
-		"ttl":         config.Env("JWT_TTL", 720),
-		"refresh_ttl": config.Env("JWT_REFRESH_TTL", 20160),
+		"ttl":         config.Env("JWT_TTL", 60),
+		"refresh_ttl": config.Env("JWT_REFRESH_TTL", 43200),
 	})
 }

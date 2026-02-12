@@ -25,7 +25,6 @@ func CSRF() http.Middleware {
 		if token == "" {
 			token = generateCSRFToken()
 		}
-		setCSRFCookie(ctx, token)
 
 		if !safeMethods[ctx.Request().Method()] {
 			headerToken := ctx.Request().Header(csrfHeaderName, "")
@@ -46,8 +45,12 @@ func CSRF() http.Middleware {
 				}).Abort()
 				return
 			}
+
+			// Rotate token after every successful mutation (POST/PUT/DELETE)
+			token = generateCSRFToken()
 		}
 
+		setCSRFCookie(ctx, token)
 		ctx.WithValue("csrf_token", token)
 		ctx.Request().Next()
 	}

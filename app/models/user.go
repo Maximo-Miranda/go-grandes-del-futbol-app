@@ -27,8 +27,21 @@ func (*User) TableName() string {
 	return "users"
 }
 
+const lockoutDuration = 30 * time.Minute
+
 func (u *User) IsLocked() bool {
-	return u.LockedAt != nil
+	if u.LockedAt == nil {
+		return false
+	}
+	if time.Since(*u.LockedAt) > lockoutDuration {
+		return false
+	}
+	return true
+}
+
+func (u *User) Unlock() {
+	u.LockedAt = nil
+	u.FailedAttempts = 0
 }
 
 func (u *User) IncrementFailedAttempts() {
