@@ -65,15 +65,31 @@ Copy `.env.example` to `.env`. Key settings:
 - `JWT_SECRET` required for authentication
 - Docker Compose provides PostgreSQL 17 on localhost:5432 (user: `postgres`, password: `password`, db: `grandes_del_futbol_development_db`)
 
-## Goravel Documentation
+## Local Documentation
 
-Local Goravel v1.17 docs available at `docs/Goravel-v1.17/`. Key references:
+All framework docs are available locally under `docs/`. Consult these before guessing API usage.
+
+**Goravel v1.17** — `docs/Goravel-v1.17/`:
 - `the-basics/validation.md` — Form request validation, rules, custom messages, filters
 - `the-basics/request.md` — Request input, file uploads, binding
 - `the-basics/response.md` — Response types, redirects, cookies
 - `the-basics/session.md` — Session management, flash data
 - `the-basics/controllers.md` — Controller patterns
 - `the-basics/routing.md` — Route definitions, middleware groups
+
+**Vuetify 3** — `docs/Vuetify-3/`:
+- `components/` — All Vuetify component docs (data tables, forms, dialogs, etc.)
+- `styles/` — Theming, colors, spacing, typography
+- `features/` — Built-in features (internationalization, accessibility, etc.)
+- `directives/` — Vue directives provided by Vuetify
+- `api/` — Component API reference
+
+**Inertia.js v2** — `docs/InertiaJS-v2/`:
+- `the-basics/` — Pages, responses, routing, redirects
+- `core-concepts/` — How Inertia works, the protocol
+- `getting-started/` — Installation and setup
+- `advanced/` — Advanced usage patterns
+- `security/` — CSRF, authorization
 
 ## Conventions
 

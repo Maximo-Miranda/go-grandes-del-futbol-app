@@ -6,8 +6,8 @@ import (
 	"github.com/goravel/framework/facades"
 	"github.com/goravel/framework/support"
 
-	authControllers "grandesdelfutbol/app/http/controllers/auth"
 	"grandesdelfutbol/app/http/controllers"
+	authControllers "grandesdelfutbol/app/http/controllers/auth"
 	"grandesdelfutbol/app/http/middleware"
 	"grandesdelfutbol/app/inertia"
 	authService "grandesdelfutbol/app/services/auth"
@@ -49,9 +49,12 @@ func Web() {
 			router.Get("/venues", venueController.Index)
 			router.Get("/venues/create", venueController.Create)
 			router.Post("/venues", venueController.Store)
-			router.Get("/venues/{id}/edit", venueController.Edit)
-			router.Put("/venues/{id}", venueController.Update)
-			router.Delete("/venues/{id}", venueController.Destroy)
+			router.Get("/venues/{uuid}/edit", venueController.Edit)
+			router.Put("/venues/{uuid}", venueController.Update)
+			router.Post("/venues/{uuid}", venueController.Update) // For method spoofing with file uploads
+			router.Delete("/venues/{uuid}", venueController.Destroy)
+			router.Delete("/venues/{uuid}/photo", venueController.DestroyPhoto)
+			router.Get("/venues/{uuid}/photo", venueController.Photo)
 
 			// Tournaments
 			tournamentController := controllers.NewTournamentController()

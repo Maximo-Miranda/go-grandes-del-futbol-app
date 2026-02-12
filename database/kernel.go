@@ -25,6 +25,9 @@ func (kernel Kernel) Migrations() []schema.Migration {
 		&migrations.M20260201000012CreateStandingsTable{},
 		&migrations.M20260201000013CreateJobsTable{},
 		&migrations.M20260204000001AddMinutesPlayedToMatchLineups{},
+		&migrations.M20260211000001ModifyVenuesAddPhotoRemoveFields{},
+		&migrations.M20260211000002CreatePitchesTable{},
+		&migrations.M20260212000001AddUuidToVenues{},
 	}
 }
 

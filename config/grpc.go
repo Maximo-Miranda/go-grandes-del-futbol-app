@@ -7,6 +7,6 @@ func init() {
 	config.Add("grpc", map[string]any{
 		"host":    config.Env("GRPC_HOST", ""),
 		"port":    config.Env("GRPC_PORT", ""),
-		"clients": map[string]any{},
+		"servers": map[string]any{},
 	})
 }
