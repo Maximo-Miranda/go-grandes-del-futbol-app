@@ -53,11 +53,19 @@ func (c *MatchController) Create(ctx http.Context) http.Response {
 	var venues []models.Venue
 	facades.Orm().Query().Find(&venues)
 
+	var allGroups []models.Group
+	facades.Orm().Query().Find(&allGroups)
+	groupsByTournament := make(map[uint][]models.Group)
+	for _, g := range allGroups {
+		groupsByTournament[g.TournamentID] = append(groupsByTournament[g.TournamentID], g)
+	}
+
 	return c.inertia.Render(ctx, "matches/Create", map[string]any{
-		"tournaments":  tournaments,
-		"teams":        teams,
-		"venues":       venues,
-		"tournamentId": tournamentID,
+		"tournaments":        tournaments,
+		"teams":              teams,
+		"venues":             venues,
+		"tournamentId":       tournamentID,
+		"groupsByTournament": groupsByTournament,
 	})
 }
 
@@ -124,6 +132,15 @@ func (c *MatchController) Store(ctx http.Context) http.Response {
 		Status:       "scheduled",
 	}
 
+	groupIDStr := ctx.Request().Input("group_id", "")
+	if groupIDStr != "" {
+		gid, err := strconv.ParseUint(groupIDStr, 10, 64)
+		if err == nil {
+			gidUint := uint(gid)
+			match.GroupID = &gidUint
+		}
+	}
+
 	if err := facades.Orm().Query().Create(&match); err != nil {
 		renderData["errors"] = map[string]string{"tournament_id": "Error al crear el partido"}
 		return c.inertia.Render(ctx, "matches/Create", renderData)
@@ -147,11 +164,15 @@ func (c *MatchController) Edit(ctx http.Context) http.Response {
 	var venues []models.Venue
 	facades.Orm().Query().Find(&venues)
 
+	var groups []models.Group
+	facades.Orm().Query().Where("tournament_id = ?", match.TournamentID).Find(&groups)
+
 	return c.inertia.Render(ctx, "matches/Edit", map[string]any{
 		"match":       match,
 		"tournaments": tournaments,
 		"teams":       teams,
 		"venues":      venues,
+		"groups":      groups,
 	})
 }
 
@@ -221,6 +242,17 @@ func (c *MatchController) Update(ctx http.Context) http.Response {
 	match.VenueID = uint(venueID)
 	match.MatchDate = matchDate
 	match.Round = matchday
+
+	groupIDStr := ctx.Request().Input("group_id", "")
+	if groupIDStr != "" {
+		gid, err := strconv.ParseUint(groupIDStr, 10, 64)
+		if err == nil {
+			gidUint := uint(gid)
+			match.GroupID = &gidUint
+		}
+	} else {
+		match.GroupID = nil
+	}
 
 	facades.Orm().Query().Save(&match)
 	inertia.Flash(ctx, "success", "Partido actualizado exitosamente")

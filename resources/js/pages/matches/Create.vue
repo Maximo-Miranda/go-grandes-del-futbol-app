@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { Head, useForm, usePage, Link, router } from "@inertiajs/vue3";
 
 const page = usePage<{
@@ -6,12 +7,14 @@ const page = usePage<{
     teams: any[];
     venues: any[];
     tournamentId?: string;
+    groupsByTournament?: Record<number, any[]>;
     errors?: Record<string, string>;
 }>();
 
 const tournaments = page.props.tournaments || [];
 const teams = page.props.teams || [];
 const venues = page.props.venues || [];
+const groupsByTournament = page.props.groupsByTournament || {};
 
 const form = useForm({
     tournament_id: page.props.tournamentId
@@ -22,6 +25,12 @@ const form = useForm({
     venue_id: null as number | null,
     match_date: "",
     matchday: 1,
+    group_id: null as number | null,
+});
+
+const availableGroups = computed(() => {
+    if (!form.tournament_id) return [];
+    return groupsByTournament[form.tournament_id] || [];
 });
 
 const submit = () => {
@@ -50,6 +59,18 @@ const submit = () => {
                         :error-messages="form.errors.tournament_id"
                         class="mb-4"
                         required
+                    />
+
+                    <v-select
+                        v-if="availableGroups.length > 0"
+                        v-model="form.group_id"
+                        :items="availableGroups"
+                        item-title="name"
+                        item-value="id"
+                        label="Grupo (opcional)"
+                        clearable
+                        :error-messages="form.errors.group_id"
+                        class="mb-4"
                     />
 
                     <v-row>

@@ -248,3 +248,86 @@ func (c *TournamentController) AvailableTeams(ctx http.Context) http.Response {
 
 	return ctx.Response().Json(http.StatusOK, http.Json{"teams": teams})
 }
+
+func (c *TournamentController) CreateGroup(ctx http.Context) http.Response {
+	tournamentID := ctx.Request().Route("id")
+	name := ctx.Request().Input("name")
+
+	if name == "" {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+	}
+
+	var tournamentModel models.Tournament
+	if err := facades.Orm().Query().Find(&tournamentModel, tournamentID); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments")
+	}
+
+	group := models.Group{
+		TournamentID: tournamentModel.ID,
+		Name:         name,
+	}
+	facades.Orm().Query().Create(&group)
+
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+}
+
+func (c *TournamentController) UpdateGroup(ctx http.Context) http.Response {
+	tournamentID := ctx.Request().Route("id")
+	groupID := ctx.Request().Route("groupId")
+	name := ctx.Request().Input("name")
+
+	if name == "" {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+	}
+
+	var group models.Group
+	if err := facades.Orm().Query().Where("id = ? AND tournament_id = ?", groupID, tournamentID).First(&group); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+	}
+
+	group.Name = name
+	facades.Orm().Query().Save(&group)
+
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+}
+
+func (c *TournamentController) DeleteGroup(ctx http.Context) http.Response {
+	tournamentID := ctx.Request().Route("id")
+	groupID := ctx.Request().Route("groupId")
+
+	var group models.Group
+	if err := facades.Orm().Query().Where("id = ? AND tournament_id = ?", groupID, tournamentID).First(&group); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+	}
+
+	facades.Orm().Query().Delete(&group)
+
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+}
+
+func (c *TournamentController) AssignTeamGroup(ctx http.Context) http.Response {
+	tournamentID := ctx.Request().Route("id")
+	teamID := ctx.Request().Route("teamId")
+	groupIDStr := ctx.Request().Input("group_id", "")
+
+	var tournamentTeam models.TournamentTeam
+	if err := facades.Orm().Query().Where("tournament_id = ? AND team_id = ?", tournamentID, teamID).First(&tournamentTeam); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+	}
+
+	if groupIDStr != "" {
+		var groupID uint
+		fmt.Sscanf(groupIDStr, "%d", &groupID)
+		tournamentTeam.GroupID = &groupID
+	} else {
+		tournamentTeam.GroupID = nil
+	}
+	facades.Orm().Query().Save(&tournamentTeam)
+
+	// Also update standings for this team in this tournament
+	facades.Orm().Query().Model(&models.Standing{}).
+		Where("tournament_id = ? AND team_id = ?", tournamentID, teamID).
+		Update("group_id", tournamentTeam.GroupID)
+
+	return ctx.Response().Redirect(http.StatusSeeOther, "/tournaments/"+tournamentID)
+}

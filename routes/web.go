@@ -79,6 +79,10 @@ func Web() {
 			router.Post("/tournaments/{id}/teams", tournamentController.AddTeam)
 			router.Delete("/tournaments/{id}/teams/{teamId}", tournamentController.RemoveTeam)
 			router.Get("/tournaments/{id}/available-teams", tournamentController.AvailableTeams)
+			router.Post("/tournaments/{id}/groups", tournamentController.CreateGroup)
+			router.Put("/tournaments/{id}/groups/{groupId}", tournamentController.UpdateGroup)
+			router.Delete("/tournaments/{id}/groups/{groupId}", tournamentController.DeleteGroup)
+			router.Put("/tournaments/{id}/teams/{teamId}/group", tournamentController.AssignTeamGroup)
 
 			// Teams
 			teamController := controllers.NewTeamController()

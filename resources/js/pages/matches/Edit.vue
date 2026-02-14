@@ -6,6 +6,7 @@ const page = usePage<{
     tournaments: any[];
     teams: any[];
     venues: any[];
+    groups?: any[];
     errors?: Record<string, string>;
 }>();
 
@@ -13,6 +14,7 @@ const match = page.props.match;
 const tournaments = page.props.tournaments || [];
 const teams = page.props.teams || [];
 const venues = page.props.venues || [];
+const groups = page.props.groups || [];
 
 const formatDateForInput = (dateStr: string | null) => {
     if (!dateStr) return "";
@@ -27,6 +29,7 @@ const form = useForm({
     venue_id: match.venue_id,
     match_date: formatDateForInput(match.match_date),
     matchday: match.round || 1,
+    group_id: match.group_id || null,
 });
 
 const submit = () => form.put(`/matches/${match.id}`);
@@ -48,6 +51,18 @@ const submit = () => form.put(`/matches/${match.id}`);
                         :error-messages="form.errors.tournament_id"
                         class="mb-4"
                         required
+                    />
+
+                    <v-select
+                        v-if="groups.length > 0"
+                        v-model="form.group_id"
+                        :items="groups"
+                        item-title="name"
+                        item-value="id"
+                        label="Grupo (opcional)"
+                        clearable
+                        :error-messages="form.errors.group_id"
+                        class="mb-4"
                     />
 
                     <v-row>
