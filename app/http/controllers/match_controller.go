@@ -1,13 +1,13 @@
 package controllers
 
 import (
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/goravel/framework/contracts/http"
 	"github.com/goravel/framework/facades"
 
+	matchRequest "grandesdelfutbol/app/http/requests/match"
 	"grandesdelfutbol/app/inertia"
 	"grandesdelfutbol/app/models"
 )
@@ -69,79 +69,67 @@ func (c *MatchController) Store(ctx http.Context) http.Response {
 	var venues []models.Venue
 	facades.Orm().Query().Find(&venues)
 
-	// Validation
-	errors := make(map[string]string)
-	tournamentID := ctx.Request().Input("tournament_id")
-	homeTeamID := ctx.Request().Input("home_team_id")
-	awayTeamID := ctx.Request().Input("away_team_id")
-
-	if tournamentID == "" {
-		errors["tournament_id"] = "El torneo es obligatorio"
-	}
-	if homeTeamID == "" {
-		errors["home_team_id"] = "El equipo local es obligatorio"
-	}
-	if awayTeamID == "" {
-		errors["away_team_id"] = "El equipo visitante es obligatorio"
-	}
-	if homeTeamID == awayTeamID && homeTeamID != "" {
-		errors["away_team_id"] = "El equipo visitante debe ser diferente al local"
+	renderData := map[string]any{
+		"tournaments": tournaments,
+		"teams":       teams,
+		"venues":      venues,
 	}
 
-	if len(errors) > 0 {
-		return c.inertia.Render(ctx, "matches/Create", map[string]any{
-			"tournaments": tournaments,
-			"teams":       teams,
-			"venues":      venues,
-			"errors":      errors,
-		})
+	var request matchRequest.StoreMatchRequest
+	validationErrors, err := ctx.Request().ValidateRequest(&request)
+	if err != nil {
+		renderData["errors"] = map[string]string{"tournament_id": "Error de validación"}
+		return c.inertia.Render(ctx, "matches/Create", renderData)
+	}
+
+	if validationErrors != nil {
+		renderData["errors"] = inertia.ValidationErrors(validationErrors.All())
+		return c.inertia.Render(ctx, "matches/Create", renderData)
+	}
+
+	// Custom validation: teams must be different
+	if request.HomeTeamID == request.AwayTeamID {
+		renderData["errors"] = map[string]string{"away_team_id": "El equipo visitante debe ser diferente al local"}
+		return c.inertia.Render(ctx, "matches/Create", renderData)
+	}
+
+	// Parse IDs safely
+	tournamentID, err2 := strconv.ParseUint(request.TournamentID, 10, 64)
+	homeTeamID, err3 := strconv.ParseUint(request.HomeTeamID, 10, 64)
+	awayTeamID, err4 := strconv.ParseUint(request.AwayTeamID, 10, 64)
+	venueID, err5 := strconv.ParseUint(request.VenueID, 10, 64)
+	matchday, err6 := strconv.Atoi(request.Matchday)
+
+	if err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil {
+		renderData["errors"] = map[string]string{"tournament_id": "Datos inválidos, verifica los campos"}
+		return c.inertia.Render(ctx, "matches/Create", renderData)
+	}
+
+	matchDate, errDate := time.Parse("2006-01-02T15:04", request.MatchDate)
+	if errDate != nil {
+		matchDate, errDate = time.Parse("2006-01-02", request.MatchDate)
+	}
+	if errDate != nil {
+		renderData["errors"] = map[string]string{"match_date": "Formato de fecha inválido"}
+		return c.inertia.Render(ctx, "matches/Create", renderData)
 	}
 
 	match := models.Match{
-		Status: "scheduled",
-	}
-
-	// Parse IDs
-	var tID, hID, aID uint
-	fmt.Sscanf(tournamentID, "%d", &tID)
-	fmt.Sscanf(homeTeamID, "%d", &hID)
-	fmt.Sscanf(awayTeamID, "%d", &aID)
-
-	match.TournamentID = tID
-	match.HomeTeamID = hID
-	match.AwayTeamID = aID
-
-	// Optional venue
-	if venueID := ctx.Request().Input("venue_id"); venueID != "" {
-		var vID uint
-		fmt.Sscanf(venueID, "%d", &vID)
-		match.VenueID = &vID
-	}
-
-	// Match date
-	if matchDate := ctx.Request().Input("match_date"); matchDate != "" {
-		if t, err := time.Parse("2006-01-02T15:04", matchDate); err == nil {
-			match.MatchDate = &t
-		} else if t, err := time.Parse("2006-01-02", matchDate); err == nil {
-			match.MatchDate = &t
-		}
-	}
-
-	// Round/Matchday
-	if matchday := ctx.Request().Input("matchday"); matchday != "" {
-		md, _ := strconv.Atoi(matchday)
-		match.Round = md
+		TournamentID: uint(tournamentID),
+		HomeTeamID:   uint(homeTeamID),
+		AwayTeamID:   uint(awayTeamID),
+		VenueID:      uint(venueID),
+		MatchDate:    matchDate,
+		Round:        matchday,
+		Status:       "scheduled",
 	}
 
 	if err := facades.Orm().Query().Create(&match); err != nil {
-		return c.inertia.Render(ctx, "matches/Create", map[string]any{
-			"tournaments": tournaments,
-			"teams":       teams,
-			"venues":      venues,
-			"errors":      map[string]string{"tournament_id": "Error al crear el partido"},
-		})
+		renderData["errors"] = map[string]string{"tournament_id": "Error al crear el partido"}
+		return c.inertia.Render(ctx, "matches/Create", renderData)
 	}
 
+	inertia.Flash(ctx, "success", "Partido creado exitosamente")
 	return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 }
 
@@ -174,38 +162,68 @@ func (c *MatchController) Update(ctx http.Context) http.Response {
 		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
-	// Parse IDs
-	if tournamentID := ctx.Request().Input("tournament_id"); tournamentID != "" {
-		var tID uint
-		fmt.Sscanf(tournamentID, "%d", &tID)
-		match.TournamentID = tID
-	}
-	if homeTeamID := ctx.Request().Input("home_team_id"); homeTeamID != "" {
-		var hID uint
-		fmt.Sscanf(homeTeamID, "%d", &hID)
-		match.HomeTeamID = hID
-	}
-	if awayTeamID := ctx.Request().Input("away_team_id"); awayTeamID != "" {
-		var aID uint
-		fmt.Sscanf(awayTeamID, "%d", &aID)
-		match.AwayTeamID = aID
-	}
-	if venueID := ctx.Request().Input("venue_id"); venueID != "" {
-		var vID uint
-		fmt.Sscanf(venueID, "%d", &vID)
-		match.VenueID = &vID
-	}
-	if matchDate := ctx.Request().Input("match_date"); matchDate != "" {
-		if t, err := time.Parse("2006-01-02T15:04", matchDate); err == nil {
-			match.MatchDate = &t
-		}
-	}
-	if matchday := ctx.Request().Input("matchday"); matchday != "" {
-		md, _ := strconv.Atoi(matchday)
-		match.Round = md
+	var tournaments []models.Tournament
+	facades.Orm().Query().Find(&tournaments)
+	var teams []models.Team
+	facades.Orm().Query().Find(&teams)
+	var venues []models.Venue
+	facades.Orm().Query().Find(&venues)
+
+	renderData := map[string]any{
+		"match":       match,
+		"tournaments": tournaments,
+		"teams":       teams,
+		"venues":      venues,
 	}
 
+	var request matchRequest.UpdateMatchRequest
+	validationErrors, err := ctx.Request().ValidateRequest(&request)
+	if err != nil {
+		renderData["errors"] = map[string]string{"tournament_id": "Error de validación"}
+		return c.inertia.Render(ctx, "matches/Edit", renderData)
+	}
+
+	if validationErrors != nil {
+		renderData["errors"] = inertia.ValidationErrors(validationErrors.All())
+		return c.inertia.Render(ctx, "matches/Edit", renderData)
+	}
+
+	// Custom validation: teams must be different
+	if request.HomeTeamID == request.AwayTeamID {
+		renderData["errors"] = map[string]string{"away_team_id": "El equipo visitante debe ser diferente al local"}
+		return c.inertia.Render(ctx, "matches/Edit", renderData)
+	}
+
+	// Parse IDs safely
+	tournamentID, err2 := strconv.ParseUint(request.TournamentID, 10, 64)
+	homeTeamID, err3 := strconv.ParseUint(request.HomeTeamID, 10, 64)
+	awayTeamID, err4 := strconv.ParseUint(request.AwayTeamID, 10, 64)
+	venueID, err5 := strconv.ParseUint(request.VenueID, 10, 64)
+	matchday, err6 := strconv.Atoi(request.Matchday)
+
+	if err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil {
+		renderData["errors"] = map[string]string{"tournament_id": "Datos inválidos, verifica los campos"}
+		return c.inertia.Render(ctx, "matches/Edit", renderData)
+	}
+
+	matchDate, errDate := time.Parse("2006-01-02T15:04", request.MatchDate)
+	if errDate != nil {
+		matchDate, errDate = time.Parse("2006-01-02", request.MatchDate)
+	}
+	if errDate != nil {
+		renderData["errors"] = map[string]string{"match_date": "Formato de fecha inválido"}
+		return c.inertia.Render(ctx, "matches/Edit", renderData)
+	}
+
+	match.TournamentID = uint(tournamentID)
+	match.HomeTeamID = uint(homeTeamID)
+	match.AwayTeamID = uint(awayTeamID)
+	match.VenueID = uint(venueID)
+	match.MatchDate = matchDate
+	match.Round = matchday
+
 	facades.Orm().Query().Save(&match)
+	inertia.Flash(ctx, "success", "Partido actualizado exitosamente")
 	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+id)
 }
 
@@ -216,6 +234,7 @@ func (c *MatchController) Destroy(ctx http.Context) http.Response {
 		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 	facades.Orm().Query().Delete(&match)
+	inertia.Flash(ctx, "success", "Partido eliminado exitosamente")
 	return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 }
 
@@ -243,11 +262,10 @@ func (c *MatchController) Show(ctx http.Context) http.Response {
 		Where("match_id = ?", id).
 		Find(&lineups)
 
-	// Get available players for both teams (for adding events)
+	// Get available players for both teams
 	var homeTeamPlayers []models.Player
 	var awayTeamPlayers []models.Player
 
-	// Players via team_players table
 	var homeTeamPlayerLinks []models.TeamPlayer
 	var awayTeamPlayerLinks []models.TeamPlayer
 	facades.Orm().Query().With("Player").Where("team_id = ?", match.HomeTeamID).Find(&homeTeamPlayerLinks)
@@ -270,6 +288,7 @@ func (c *MatchController) Show(ctx http.Context) http.Response {
 		"lineups":         lineups,
 		"homeTeamPlayers": homeTeamPlayers,
 		"awayTeamPlayers": awayTeamPlayers,
+		"isEditable":      match.IsEditable(),
 	})
 }
 
@@ -278,6 +297,11 @@ func (c *MatchController) RecordResult(ctx http.Context) http.Response {
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, id); err != nil {
 		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
+	}
+
+	if !match.IsEditable() {
+		inertia.Flash(ctx, "error", "El partido no se puede editar hasta 24 horas antes de su inicio")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+id)
 	}
 
 	homeScore, _ := strconv.Atoi(ctx.Request().Input("home_score", "0"))
@@ -289,13 +313,12 @@ func (c *MatchController) RecordResult(ctx http.Context) http.Response {
 
 	facades.Orm().Query().Save(&match)
 
-	// Update standings
 	c.updateStandings(&match)
 
+	inertia.Flash(ctx, "success", "Resultado registrado exitosamente")
 	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+id)
 }
 
-// CloseMatch marks a match as finished without changing the score
 func (c *MatchController) CloseMatch(ctx http.Context) http.Response {
 	id := ctx.Request().Route("id")
 	var match models.Match
@@ -303,21 +326,30 @@ func (c *MatchController) CloseMatch(ctx http.Context) http.Response {
 		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
 	}
 
+	if !match.IsEditable() {
+		inertia.Flash(ctx, "error", "El partido no se puede cerrar hasta 24 horas antes de su inicio")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+id)
+	}
+
 	match.Status = "completed"
 	facades.Orm().Query().Save(&match)
 
-	// Update standings if not already done
 	c.updateStandings(&match)
 
+	inertia.Flash(ctx, "success", "Partido cerrado exitosamente")
 	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+id)
 }
 
-// AddEvent adds a match event (goal, assist, card, etc.)
 func (c *MatchController) AddEvent(ctx http.Context) http.Response {
 	matchID := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
 		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
+	}
+
+	if !match.IsEditable() {
+		inertia.Flash(ctx, "error", "No se pueden agregar eventos hasta 24 horas antes del partido")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 	}
 
 	playerID, _ := strconv.ParseUint(ctx.Request().Input("player_id"), 10, 64)
@@ -352,7 +384,6 @@ func (c *MatchController) AddEvent(ctx http.Context) http.Response {
 	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 }
 
-// DeleteEvent removes a match event
 func (c *MatchController) DeleteEvent(ctx http.Context) http.Response {
 	matchID := ctx.Request().Route("id")
 	eventID := ctx.Request().Route("eventId")
@@ -360,6 +391,11 @@ func (c *MatchController) DeleteEvent(ctx http.Context) http.Response {
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
 		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
+	}
+
+	if !match.IsEditable() {
+		inertia.Flash(ctx, "error", "No se pueden eliminar eventos hasta 24 horas antes del partido")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 	}
 
 	var event models.MatchEvent
@@ -386,12 +422,16 @@ func (c *MatchController) DeleteEvent(ctx http.Context) http.Response {
 	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 }
 
-// AddLineup adds a player to the match lineup
 func (c *MatchController) AddLineup(ctx http.Context) http.Response {
 	matchID := ctx.Request().Route("id")
 	var match models.Match
 	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
 		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
+	}
+
+	if !match.IsEditable() {
+		inertia.Flash(ctx, "error", "No se pueden modificar alineaciones hasta 24 horas antes del partido")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 	}
 
 	playerID, _ := strconv.ParseUint(ctx.Request().Input("player_id"), 10, 64)
@@ -407,12 +447,10 @@ func (c *MatchController) AddLineup(ctx http.Context) http.Response {
 	var existing models.MatchLineup
 	facades.Orm().Query().Where("match_id = ? AND player_id = ?", matchID, playerID).First(&existing)
 	if existing.ID > 0 {
-		// Update existing
 		existing.MinutesPlayed = minutesPlayed
 		existing.IsStarter = isStarter
 		facades.Orm().Query().Save(&existing)
 	} else {
-		// Create new
 		lineup := models.MatchLineup{
 			MatchID:       match.ID,
 			PlayerID:      uint(playerID),
@@ -426,10 +464,19 @@ func (c *MatchController) AddLineup(ctx http.Context) http.Response {
 	return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
 }
 
-// RemoveLineup removes a player from the match lineup
 func (c *MatchController) RemoveLineup(ctx http.Context) http.Response {
 	matchID := ctx.Request().Route("id")
 	playerID := ctx.Request().Route("playerId")
+
+	var match models.Match
+	if err := facades.Orm().Query().Find(&match, matchID); err != nil {
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches")
+	}
+
+	if !match.IsEditable() {
+		inertia.Flash(ctx, "error", "No se pueden modificar alineaciones hasta 24 horas antes del partido")
+		return ctx.Response().Redirect(http.StatusSeeOther, "/matches/"+matchID)
+	}
 
 	facades.Orm().Query().Where("match_id = ? AND player_id = ?", matchID, playerID).Delete(&models.MatchLineup{})
 

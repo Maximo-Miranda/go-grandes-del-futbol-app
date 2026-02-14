@@ -88,7 +88,9 @@ func Web() {
 			router.Get("/teams/{id}", teamController.Show)
 			router.Get("/teams/{id}/edit", teamController.Edit)
 			router.Put("/teams/{id}", teamController.Update)
+			router.Post("/teams/{id}", teamController.Update) // For method spoofing with file uploads
 			router.Delete("/teams/{id}", teamController.Destroy)
+			router.Get("/teams/{id}/logo", teamController.Logo)
 			router.Post("/teams/{id}/players", teamController.AddPlayer)
 			router.Delete("/teams/{id}/players/{playerId}", teamController.RemovePlayer)
 			router.Get("/teams/{id}/available-players", teamController.AvailablePlayers)

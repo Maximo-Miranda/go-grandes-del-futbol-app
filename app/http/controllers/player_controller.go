@@ -117,7 +117,7 @@ func (c *PlayerController) Show(ctx http.Context) http.Response {
 		}
 
 		dateStr := ""
-		if lineup.Match.MatchDate != nil {
+		if !lineup.Match.MatchDate.IsZero() {
 			dateStr = lineup.Match.MatchDate.Format("02/01/2006")
 		}
 

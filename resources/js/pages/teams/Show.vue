@@ -34,7 +34,6 @@ const addPlayer = () => {
                 onSuccess: () => {
                     showAddPlayerDialog.value = false;
                     selectedPlayerId.value = null;
-                    // Refresh the page data to update the list
                     router.visit(window.location.href, {
                         preserveScroll: true,
                     });
@@ -69,12 +68,14 @@ const removePlayer = (playerId: number) => {
         <div class="d-flex justify-space-between align-center mb-6">
             <div class="d-flex align-center ga-4">
                 <v-avatar size="64" :color="team.color || 'primary'">
-                    <v-icon size="32">mdi-shield</v-icon>
+                    <v-img v-if="team.logo_url" :src="team.logo_url" cover />
+                    <v-icon v-else size="32" color="white">mdi-shield</v-icon>
                 </v-avatar>
                 <div>
                     <h1 class="text-h4 font-weight-bold">{{ team.name }}</h1>
                     <p v-if="team.contact_phone" class="text-medium-emphasis">
-                        📞 {{ team.contact_phone }}
+                        <v-icon size="16" class="mr-1">mdi-phone</v-icon>
+                        {{ team.contact_phone }}
                     </p>
                 </div>
             </div>

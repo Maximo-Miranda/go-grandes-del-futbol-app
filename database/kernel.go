@@ -30,6 +30,8 @@ func (kernel Kernel) Migrations() []schema.Migration {
 		&migrations.M20260212000001AddUuidToVenues{},
 		&migrations.M20260212000002MakeTournamentsFieldsRequired{},
 		&migrations.M20260213000001MakePlayerUserIdRequiredAndDropName{},
+		&migrations.M20260213000002MakeTeamsFieldsRequired{},
+		&migrations.M20260213000003MakeMatchesFieldsRequired{},
 	}
 }
 
