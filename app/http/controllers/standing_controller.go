@@ -19,13 +19,12 @@ func NewStandingController() *StandingController {
 func (c *StandingController) Index(ctx http.Context) http.Response {
 	tournamentID := ctx.Request().Query("tournament_id", "")
 
-	query := facades.Orm().Query().With("Team").With("Group").With("Tournament")
-	if tournamentID != "" {
-		query = query.Where("tournament_id = ?", tournamentID)
-	}
-
 	var standings []models.Standing
-	query.Order("points DESC, goal_difference DESC, goals_for DESC").Find(&standings)
+	if tournamentID != "" {
+		facades.Orm().Query().With("Team").With("Group").With("Tournament").
+			Where("tournament_id = ?", tournamentID).
+			Order("points DESC, goal_difference DESC, goals_for DESC").Find(&standings)
+	}
 
 	var tournaments []models.Tournament
 	facades.Orm().Query().Where("status != ?", "draft").Find(&tournaments)

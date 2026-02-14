@@ -15,6 +15,7 @@ const form = useForm({
     name: tournament.name,
     format: tournament.format,
     game_type: tournament.game_type,
+    status: tournament.status,
     start_date: formatDateForInput(tournament.start_date),
     end_date: formatDateForInput(tournament.end_date),
     venue_id: tournament.venue_id,
@@ -30,6 +31,12 @@ const gameTypes = [
     { title: "5 vs 5", value: "5v5" },
     { title: "7 vs 7", value: "7v7" },
     { title: "11 vs 11", value: "11v11" },
+];
+const statuses = [
+    { title: "Borrador", value: "draft" },
+    { title: "Activo", value: "active" },
+    { title: "Finalizado", value: "completed" },
+    { title: "Cancelado", value: "cancelled" },
 ];
 
 const minEndDate = computed(() => {
@@ -89,6 +96,14 @@ const submit = () => {
                             />
                         </v-col>
                     </v-row>
+                    <v-select
+                        v-model="form.status"
+                        :items="statuses"
+                        label="Estado *"
+                        :error-messages="form.errors.status"
+                        class="mb-4"
+                        required
+                    />
                     <v-row>
                         <v-col cols="12" md="6">
                             <v-text-field

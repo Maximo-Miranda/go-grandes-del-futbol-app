@@ -9,6 +9,7 @@ type UpdateTournamentRequest struct {
 	Name        string `form:"name" json:"name"`
 	Format      string `form:"format" json:"format"`
 	GameType    string `form:"game_type" json:"game_type"`
+	Status      string `form:"status" json:"status"`
 	StartDate   string `form:"start_date" json:"start_date"`
 	EndDate     string `form:"end_date" json:"end_date"`
 	VenueID     string `form:"venue_id" json:"venue_id"`
@@ -24,6 +25,7 @@ func (r *UpdateTournamentRequest) Rules(ctx http.Context) map[string]string {
 		"name":       "required|min_len:2|max_len:100",
 		"format":     "required|in:round_robin,knockout,group_knockout",
 		"game_type":  "required|in:5v5,7v7,11v11",
+		"status":     "required|in:draft,active,completed,cancelled",
 		"venue_id":   "required",
 		"start_date": "required|date",
 	}
@@ -46,6 +48,8 @@ func (r *UpdateTournamentRequest) Messages(ctx http.Context) map[string]string {
 		"format.in":           "El formato debe ser: todos contra todos, eliminación directa o grupos + eliminación",
 		"game_type.required":  "El tipo de juego es obligatorio",
 		"game_type.in":        "El tipo de juego debe ser: 5v5, 7v7 o 11v11",
+		"status.required":     "El estado es obligatorio",
+		"status.in":           "El estado debe ser: borrador, activo, finalizado o cancelado",
 		"venue_id.required":   "La sede es obligatoria",
 		"start_date.required": "La fecha de inicio es obligatoria",
 		"start_date.date":     "La fecha de inicio debe ser una fecha válida",
@@ -60,6 +64,7 @@ func (r *UpdateTournamentRequest) Attributes(ctx http.Context) map[string]string
 		"name":       "nombre",
 		"format":     "formato",
 		"game_type":  "tipo de juego",
+		"status":     "estado",
 		"start_date": "fecha de inicio",
 		"end_date":   "fecha de fin",
 		"venue_id":   "sede",

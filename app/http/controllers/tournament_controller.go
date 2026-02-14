@@ -157,6 +157,7 @@ func (c *TournamentController) Update(ctx http.Context) http.Response {
 	tournamentModel.Description = request.Description
 	tournamentModel.Format = request.Format
 	tournamentModel.GameType = request.GameType
+	tournamentModel.Status = request.Status
 
 	startDate, _ := time.Parse("2006-01-02", request.StartDate)
 	endDate, _ := time.Parse("2006-01-02", request.EndDate)
